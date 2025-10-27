@@ -145,6 +145,37 @@ const Dosare = () => {
     e.preventDefault();
     const nrCrt = parseInt(formData.nr_crt);
     
+    // Get existing dosare to validate nr_crt
+    const { data: existingDosare } = await supabase
+      .from("dosare")
+      .select("nr_crt")
+      .eq("inventar_id", inventarId)
+      .order("nr_crt", { ascending: true });
+
+    // Check if nr_crt already exists
+    if (existingDosare?.some(d => d.nr_crt === nrCrt)) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: `Numărul curent ${nrCrt} există deja`,
+      });
+      return;
+    }
+
+    // Check if nr_crt is valid in sequence
+    const maxExisting = existingDosare && existingDosare.length > 0 
+      ? Math.max(...existingDosare.map(d => d.nr_crt)) 
+      : 0;
+    
+    if (nrCrt !== maxExisting + 1 && nrCrt !== 1) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: `Numărul curent trebuie să fie ${maxExisting > 0 ? maxExisting + 1 : 1}, nu ${nrCrt}`,
+      });
+      return;
+    }
+    
     const { error } = await supabase.from("dosare").insert([
       {
         nr_crt: nrCrt,
