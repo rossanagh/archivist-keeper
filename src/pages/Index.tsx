@@ -1,18 +1,12 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/fonduri");
-      } else {
-        navigate("/auth");
-      }
-    });
+    // Always redirect to fonduri (public access)
+    navigate("/fonduri");
   }, [navigate]);
 
   return null;
