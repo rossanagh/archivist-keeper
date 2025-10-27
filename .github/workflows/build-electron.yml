@@ -21,9 +21,12 @@ jobs:
       - name: Add scripts to package.json
         run: |
           $packageJson = Get-Content package.json | ConvertFrom-Json
-          $packageJson.scripts.dev = "vite"
-          $packageJson.scripts.build = "tsc && vite build"
-          $packageJson.scripts."electron:build" = "npm run build && electron-builder --win portable"
+          if (-not $packageJson.scripts) {
+            $packageJson | Add-Member -MemberType NoteProperty -Name "scripts" -Value @{}
+          }
+          $packageJson.scripts | Add-Member -MemberType NoteProperty -Name "dev" -Value "vite" -Force
+          $packageJson.scripts | Add-Member -MemberType NoteProperty -Name "build" -Value "tsc && vite build" -Force
+          $packageJson.scripts | Add-Member -MemberType NoteProperty -Name "electron:build" -Value "npm run build && electron-builder --win portable" -Force
           $packageJson | ConvertTo-Json -Depth 100 | Set-Content package.json
         shell: pwsh
 
