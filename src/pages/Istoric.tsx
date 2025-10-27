@@ -40,11 +40,9 @@ const Istoric = () => {
     setLoading(false);
   };
 
-  const getActionLabel = (action: string, tableName: string | null) => {
+  const getActionLabel = (action: string, tableName: string | null, details: any) => {
     if (action === "LOGIN") return "Autentificare";
     if (action === "LOGOUT") return "Deconectare";
-    if (action === "IMPORT_EXCEL") return "Import Excel";
-    if (action === "EXPORT_EXCEL") return "Export Excel";
     
     const tableLabels: Record<string, string> = {
       fonduri: "Fond",
@@ -56,11 +54,26 @@ const Istoric = () => {
     const actionLabels: Record<string, string> = {
       INSERT: "Adăugare",
       UPDATE: "Modificare",
-      DELETE: "Ștergere"
+      DELETE: "Ștergere",
+      IMPORT_EXCEL: "Import Excel",
+      EXPORT_EXCEL: "Export Excel"
     };
 
     const table = tableName ? tableLabels[tableName] || tableName : "";
     const actionLabel = actionLabels[action] || action;
+
+    // Special formatting for dosare actions
+    if (tableName === "dosare" && details) {
+      if (action === "INSERT" && details.nr_crt) {
+        return `Adăugare Dosar nr. crt ${details.nr_crt}`;
+      }
+      if (action === "IMPORT_EXCEL" && details.nr_crt_range) {
+        return `Import Excel Dosare nr. crt ${details.nr_crt_range}`;
+      }
+      if (action === "EXPORT_EXCEL" && details.nr_crt_range) {
+        return `Export Excel Dosare nr. crt ${details.nr_crt_range}`;
+      }
+    }
 
     return table ? `${actionLabel} ${table}` : actionLabel;
   };
@@ -102,21 +115,19 @@ const Istoric = () => {
                           {format(new Date(log.created_at), "dd MMM yyyy, HH:mm:ss", { locale: ro })}
                         </TableCell>
                         <TableCell className="font-medium">{log.username}</TableCell>
-                        <TableCell>{getActionLabel(log.action, log.table_name)}</TableCell>
+                        <TableCell>{getActionLabel(log.action, log.table_name, log.details)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           <div className="space-y-1">
                             {log.details?.nume && <div>Nume: {log.details.nume}</div>}
-                            {log.details?.fond && (
+                            {log.details?.inventar_an && (
                               <div className="font-medium text-foreground">
-                                Fond: {log.details.fond}
-                                {log.details?.compartiment && ` / Compartiment: ${log.details.compartiment}`}
-                                {log.details?.inventar_an && ` / Inventar: ${log.details.inventar_an}`}
+                                din Inventar {log.details.inventar_an}
+                                {log.details?.compartiment && `, Compartiment: ${log.details.compartiment}`}
+                                {log.details?.fond && `, Fond: ${log.details.fond}`}
                                 {log.details?.termen_pastrare && ` (${log.details.termen_pastrare} ani)`}
                               </div>
                             )}
-                            {log.details?.count && <div>Înregistrări: {log.details.count}</div>}
-                            {log.details?.nr_crt && <div>Nr. crt: {log.details.nr_crt}</div>}
-                            {log.details?.nr_crt_range && <div>Interval: {log.details.nr_crt_range}</div>}
+                            {log.details?.count && <div>{log.details.count} înregistrări</div>}
                           </div>
                         </TableCell>
                       </TableRow>
