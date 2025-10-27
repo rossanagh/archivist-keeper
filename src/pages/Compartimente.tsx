@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, FolderOpen, ChevronLeft } from "lucide-react";
+import { Plus, FolderOpen, ChevronLeft, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Compartiment {
@@ -23,6 +23,7 @@ const Compartimente = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [open, setOpen] = useState(false);
   const [nume, setNume] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -104,6 +105,10 @@ const Compartimente = () => {
     }
   };
 
+  const filteredCompartimente = compartimente.filter((comp) =>
+    comp.nume.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -150,12 +155,23 @@ const Compartimente = () => {
                   </form>
                 </DialogContent>
               </Dialog>
-            )}
+          )}
           </div>
         </div>
 
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Caută compartimente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {compartimente.map((comp) => (
+          {filteredCompartimente.map((comp) => (
             <Card
               key={comp.id}
               className="hover:shadow-lg transition-shadow cursor-pointer"
@@ -177,6 +193,14 @@ const Compartimente = () => {
             </Card>
           ))}
         </div>
+
+        {filteredCompartimente.length === 0 && compartimente.length > 0 && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">
+              Nu s-au găsit compartimente care să corespundă căutării.
+            </p>
+          </div>
+        )}
 
         {compartimente.length === 0 && (
           <div className="text-center py-12">

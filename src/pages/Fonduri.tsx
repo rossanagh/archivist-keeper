@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, FolderOpen } from "lucide-react";
+import { Plus, FolderOpen, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Fond {
@@ -21,6 +21,7 @@ const Fonduri = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [open, setOpen] = useState(false);
   const [nume, setNume] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -89,6 +90,10 @@ const Fonduri = () => {
     }
   };
 
+  const filteredFonduri = fonduri.filter((fond) =>
+    fond.nume.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -126,8 +131,19 @@ const Fonduri = () => {
           )}
         </div>
 
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Caută fonduri..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {fonduri.map((fond) => (
+          {filteredFonduri.map((fond) => (
             <Card
               key={fond.id}
               className="hover:shadow-lg transition-shadow cursor-pointer"
@@ -147,6 +163,14 @@ const Fonduri = () => {
             </Card>
           ))}
         </div>
+
+        {filteredFonduri.length === 0 && fonduri.length > 0 && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">
+              Nu s-au găsit fonduri care să corespundă căutării.
+            </p>
+          </div>
+        )}
 
         {fonduri.length === 0 && (
           <div className="text-center py-12">

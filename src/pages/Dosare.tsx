@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, ChevronLeft, Download, Upload } from "lucide-react";
+import { Plus, ChevronLeft, Download, Upload, Search } from "lucide-react";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 
@@ -29,6 +30,9 @@ const Dosare = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState<string>("");
   const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const dosarePerPage = 10;
   const [formData, setFormData] = useState({
     nr_crt: "",
     indicativ_nomenclator: "",
@@ -217,6 +221,21 @@ const Dosare = () => {
     reader.readAsBinaryString(file);
   };
 
+  const filteredDosare = dosare.filter((dosar) =>
+    dosar.nr_crt.toString().includes(searchTerm) ||
+    dosar.indicativ_nomenclator.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dosar.continut.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dosar.date_extreme.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dosar.numar_file.toString().includes(searchTerm) ||
+    (dosar.observatii && dosar.observatii.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (dosar.nr_cutie && dosar.nr_cutie.toString().includes(searchTerm))
+  );
+
+  const totalPages = Math.ceil(filteredDosare.length / dosarePerPage);
+  const indexOfLastDosar = currentPage * dosarePerPage;
+  const indexOfFirstDosar = indexOfLastDosar - dosarePerPage;
+  const currentDosare = filteredDosare.slice(indexOfFirstDosar, indexOfLastDosar);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -373,6 +392,26 @@ const Dosare = () => {
           </div>
         </div>
 
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Caută dosare (nr. crt, indicativ, conținut, date, file, observații, cutie)..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="pl-10"
+          />
+        </div>
+
+        {filteredDosare.length > 0 && (
+          <div className="text-sm text-muted-foreground">
+            Se afișează {indexOfFirstDosar + 1}-{Math.min(indexOfLastDosar, filteredDosare.length)} din {filteredDosare.length} dosare
+          </div>
+        )}
+
         <div className="border rounded-lg">
           <Table>
             <TableHeader>
@@ -387,7 +426,7 @@ const Dosare = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {dosare.map((dosar) => (
+              {currentDosare.map((dosar) => (
                 <TableRow key={dosar.id}>
                   <TableCell>{dosar.nr_crt}</TableCell>
                   <TableCell>{dosar.indicativ_nomenclator}</TableCell>
@@ -401,6 +440,44 @@ const Dosare = () => {
             </TableBody>
           </Table>
         </div>
+
+        {filteredDosare.length > dosarePerPage && (
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    onClick={() => setCurrentPage(page)}
+                    isActive={currentPage === page}
+                    className="cursor-pointer"
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
+
+        {filteredDosare.length === 0 && dosare.length > 0 && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">
+              Nu s-au găsit dosare care să corespundă căutării.
+            </p>
+          </div>
+        )}
 
         {dosare.length === 0 && (
           <div className="text-center py-12">

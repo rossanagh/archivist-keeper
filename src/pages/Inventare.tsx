@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, FileText, ChevronLeft, Lock } from "lucide-react";
+import { Plus, FileText, ChevronLeft, Lock, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Inventar {
@@ -28,6 +28,7 @@ const Inventare = () => {
   const [open, setOpen] = useState(false);
   const [an, setAn] = useState("");
   const [termenPastrare, setTermenPastrare] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -151,6 +152,12 @@ const Inventare = () => {
     }
   };
 
+  const filteredInventare = inventare.filter((inv) =>
+    inv.an.toString().includes(searchTerm) ||
+    inv.termen_pastrare.toString().includes(searchTerm) ||
+    inv.numar_dosare.toString().includes(searchTerm)
+  );
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -211,12 +218,23 @@ const Inventare = () => {
                   </form>
                 </DialogContent>
               </Dialog>
-            )}
+          )}
           </div>
         </div>
 
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Caută inventare (an, termen păstrare, număr dosare)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {inventare.map((inv) => (
+          {filteredInventare.map((inv) => (
             <Card
               key={inv.id}
               className="hover:shadow-lg transition-shadow cursor-pointer relative"
@@ -246,6 +264,14 @@ const Inventare = () => {
             </Card>
           ))}
         </div>
+
+        {filteredInventare.length === 0 && inventare.length > 0 && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">
+              Nu s-au găsit inventare care să corespundă căutării.
+            </p>
+          </div>
+        )}
 
         {inventare.length === 0 && (
           <div className="text-center py-12">
