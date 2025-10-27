@@ -99,41 +99,34 @@ const Layout = ({ children }: LayoutProps) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {user && isAdmin ? (
-              <>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium">{username}</span>
-                  <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
-                    Admin
-                  </span>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => navigate("/istoric")}>
-                  <History className="h-4 w-4 mr-2" />
-                  Istoric
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => navigate("/password-management")}>
-                  <KeyRound className="h-4 w-4 mr-2" />
-                  Gestionare Parole
-                </Button>
-                {username === "ghitaoarga" && (
-                  <Button variant="outline" size="sm" onClick={() => navigate("/create-admin")}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Creare Admin
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Deconectare
-                </Button>
-              </>
-            ) : (
-              <Button variant="default" size="sm" onClick={handleLoginClick}>
-                <LogIn className="h-4 w-4 mr-2" />
-                Login Admin
+          {user && isAdmin && (
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium">{username}</span>
+                <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                  Admin
+                </span>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => navigate("/istoric")}>
+                <History className="h-4 w-4 mr-2" />
+                Istoric
               </Button>
-            )}
-          </div>
+              <Button variant="outline" size="sm" onClick={() => navigate("/password-management")}>
+                <KeyRound className="h-4 w-4 mr-2" />
+                Gestionare Parole
+              </Button>
+              {username === "ghitaoarga" && (
+                <Button variant="outline" size="sm" onClick={() => navigate("/create-admin")}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Creare Admin
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Deconectare
+              </Button>
+            </div>
+          )}
         </div>
       </header>
       <main className="container mx-auto px-4 py-8">{children}</main>
