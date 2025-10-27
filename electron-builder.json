@@ -1,0 +1,29 @@
+{
+  "appId": "com.inventoryapp.app",
+  "productName": "InventoryApp",
+  "directories": {
+    "output": "dist-electron",
+    "buildResources": "public"
+  },
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "public/pwa-512x512.png",
+    "artifactName": "InventoryApp-Portable.exe"
+  },
+  "portable": {
+    "artifactName": "InventoryApp-Portable.exe"
+  },
+  "extraMetadata": {
+    "main": "electron/main.js"
+  }
+}
