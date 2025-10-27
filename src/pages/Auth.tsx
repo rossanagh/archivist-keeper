@@ -11,7 +11,7 @@ import { Archive } from "lucide-react";
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -21,12 +21,15 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      // Convert username to internal email format
+      const internalEmail = `${username}@inventory.local`;
+
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: internalEmail,
         password,
       });
 
-      if (error) throw error;
+      if (error) throw new Error("Username sau parolă incorectă");
 
       toast({
         title: "Autentificare reușită",
@@ -37,7 +40,7 @@ const Auth = () => {
       toast({
         variant: "destructive",
         title: "Eroare la autentificare",
-        description: error.message,
+        description: "Username sau parolă incorectă",
       });
     } finally {
       setLoading(false);
@@ -49,11 +52,28 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      // Check if username already exists
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("username", username)
+        .maybeSingle();
+
+      if (existingProfile) {
+        throw new Error("Username-ul este deja folosit");
+      }
+
+      // Create account with internal email format
+      const internalEmail = `${username}@inventory.local`;
+
       const { error } = await supabase.auth.signUp({
-        email,
+        email: internalEmail,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            username: username,
+          },
         },
       });
 
@@ -95,13 +115,13 @@ const Auth = () => {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="login-username">Username</Label>
                   <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="exemplu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="login-username"
+                    type="text"
+                    placeholder="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
                   />
                 </div>
@@ -124,14 +144,15 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-username">Username</Label>
                   <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="exemplu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="signup-username"
+                    type="text"
+                    placeholder="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
+                    minLength={3}
                   />
                 </div>
                 <div className="space-y-2">

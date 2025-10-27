@@ -12,6 +12,7 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [username, setUsername] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +20,7 @@ const Layout = ({ children }: LayoutProps) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         checkAdminStatus(session.user.id);
+        loadUsername(session.user.id);
       }
     });
 
@@ -28,8 +30,10 @@ const Layout = ({ children }: LayoutProps) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         checkAdminStatus(session.user.id);
+        loadUsername(session.user.id);
       } else {
         setIsAdmin(false);
+        setUsername("");
       }
     });
 
@@ -45,6 +49,18 @@ const Layout = ({ children }: LayoutProps) => {
       .maybeSingle();
 
     setIsAdmin(!!data);
+  };
+
+  const loadUsername = async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (data) {
+      setUsername(data.username);
+    }
   };
 
   const handleLogout = async () => {
@@ -74,7 +90,7 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
               <User className="h-4 w-4" />
-              <span>{user.email}</span>
+              <span>{username || user.email}</span>
               {isAdmin && (
                 <span className="ml-2 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
                   Admin
