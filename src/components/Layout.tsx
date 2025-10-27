@@ -40,6 +40,21 @@ const Layout = ({ children }: LayoutProps) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await supabase.auth.signOut();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
   const checkAdminStatus = async (userId: string) => {
     const { data } = await supabase
       .from("user_roles")
