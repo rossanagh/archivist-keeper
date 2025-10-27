@@ -55,18 +55,34 @@ const Istoric = () => {
       dosare: "Dosar"
     };
 
-    const actionLabels: Record<string, string> = {
-      INSERT: "Adăugare",
-      UPDATE: "Modificare",
-      DELETE: "Ștergere",
-      IMPORT_EXCEL: "Import",
-      EXPORT_EXCEL: "Export"
-    };
-
     const table = tableName ? tableLabels[tableName] || tableName : "";
-    const actionLabel = actionLabels[action] || action;
 
-    return table ? `${actionLabel} ${table}` : actionLabel;
+    // Special handling for different action types
+    if (action === "IMPORT_EXCEL") {
+      return `Import ${table}`;
+    }
+
+    if (action === "EXPORT_EXCEL") {
+      return `Export ${table}`;
+    }
+
+    if (action === "INSERT") {
+      // For manual additions with specific nr_crt
+      if (tableName === "dosare" && details?.nr_crt) {
+        return `Adăugare manual Dosar nr crt ${details.nr_crt}`;
+      }
+      return `Adăugare ${table}`;
+    }
+
+    if (action === "UPDATE") {
+      return `Modificare ${table}`;
+    }
+
+    if (action === "DELETE") {
+      return `Ștergere ${table}`;
+    }
+
+    return action;
   };
 
   const getDetailsSummary = (action: string, tableName: string | null, details: any) => {
