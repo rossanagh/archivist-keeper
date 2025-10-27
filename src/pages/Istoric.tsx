@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
+import { ChevronLeft } from "lucide-react";
 
 interface AuditLog {
   id: string;
@@ -18,6 +21,7 @@ interface AuditLog {
 const Istoric = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadLogs();
@@ -81,6 +85,13 @@ const Istoric = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/fonduri")}
+        >
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Înapoi la Fonduri
+        </Button>
         <div>
           <h1 className="text-3xl font-bold">Istoric Modificări</h1>
           <p className="text-muted-foreground">

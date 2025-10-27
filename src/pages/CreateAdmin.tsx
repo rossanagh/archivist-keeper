@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { authSchema } from "@/lib/validations";
 import { z } from "zod";
+import { ChevronLeft } from "lucide-react";
 
 const CreateAdmin = () => {
   const [username, setUsername] = useState("");
@@ -143,8 +144,16 @@ const CreateAdmin = () => {
 
   return (
     <Layout>
-      <div className="flex items-center justify-center min-h-[80vh]">
-        <Card className="w-full max-w-md">
+      <div className="space-y-6">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/fonduri")}
+        >
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Înapoi la Fonduri
+        </Button>
+        <div className="flex items-center justify-center">
+          <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Creare Cont Administrator</CardTitle>
             <CardDescription>
@@ -179,6 +188,7 @@ const CreateAdmin = () => {
             </form>
           </CardContent>
         </Card>
+      </div>
       </div>
     </Layout>
   );
