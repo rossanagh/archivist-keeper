@@ -78,8 +78,7 @@ const Layout = ({ children }: LayoutProps) => {
     }
     
     await supabase.auth.signOut();
-    setIsAdmin(false);
-    setUsername("");
+    window.location.href = "/fonduri";
   };
 
   const handleLoginClick = () => {

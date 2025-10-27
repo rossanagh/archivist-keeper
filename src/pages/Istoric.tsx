@@ -106,6 +106,8 @@ const Istoric = () => {
                         <TableCell className="text-sm text-muted-foreground">
                           {log.details?.nume && `Nume: ${log.details.nume}`}
                           {log.details?.count && `Înregistrări: ${log.details.count}`}
+                          {log.details?.nr_crt && `, Nr. crt: ${log.details.nr_crt}`}
+                          {log.details?.nr_crt_range && `, Interval: ${log.details.nr_crt_range}`}
                         </TableCell>
                       </TableRow>
                     ))}

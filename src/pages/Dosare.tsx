@@ -143,9 +143,11 @@ const Dosare = () => {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    const nrCrt = parseInt(formData.nr_crt);
+    
     const { error } = await supabase.from("dosare").insert([
       {
-        nr_crt: parseInt(formData.nr_crt),
+        nr_crt: nrCrt,
         indicativ_nomenclator: formData.indicativ_nomenclator,
         continut: formData.continut,
         date_extreme: formData.date_extreme,
@@ -165,6 +167,25 @@ const Dosare = () => {
           : "Nu s-a putut adăuga dosarul",
       });
     } else {
+      // Log manual add event
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .single();
+
+        await supabase.from("audit_logs").insert({
+          user_id: user.id,
+          username: profile?.username || "unknown",
+          action: "INSERT",
+          table_name: "dosare",
+          record_id: inventarId,
+          details: { nr_crt: nrCrt },
+        });
+      }
+
       toast({
         title: "Succes",
         description: "Dosar adăugat cu succes",
@@ -222,6 +243,8 @@ const Dosare = () => {
           .eq("id", user.id)
           .single();
 
+        const nrCrtList = dosare.map(d => d.nr_crt).sort((a, b) => a - b);
+        
         await supabase.from("audit_logs").insert({
           user_id: user.id,
           username: profile?.username || "unknown",
@@ -230,6 +253,7 @@ const Dosare = () => {
           record_id: inventarId,
           details: {
             count: dosare.length,
+            nr_crt_range: nrCrtList.length > 0 ? `${nrCrtList[0]}-${nrCrtList[nrCrtList.length - 1]}` : "",
             inventar_an: inventarAn,
             fond: fondNume,
             compartiment: compartimentNume,
@@ -263,60 +287,99 @@ const Dosare = () => {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { range: 5 }); // Skip first 5 rows (header info)
 
+        if (!data.length) {
+          throw new Error("Fișierul nu conține date valide");
+        }
+
+        // Get existing dosare for this inventar to check for duplicates
+        const { data: existingDosare } = await supabase
+          .from("dosare")
+          .select("nr_crt")
+          .eq("inventar_id", inventarId);
+
+        const existingNrCrt = new Set(existingDosare?.map(d => d.nr_crt) || []);
+
         const dosareData = data.map((row: any) => ({
-          nr_crt: row["Nr. crt"] || row["nr_crt"],
+          nr_crt: Number(row["Nr. crt"] || row["nr_crt"]),
           indicativ_nomenclator:
             row["Indicativ nomenclator"] || row["indicativ_nomenclator"],
           continut: row["Conținut"] || row["continut"],
           date_extreme: row["Date extreme"] || row["date_extreme"],
-          numar_file: row["Număr file"] || row["numar_file"],
+          numar_file: Number(row["Număr file"] || row["numar_file"]),
           observatii: row["Observații"] || row["observatii"] || null,
-          nr_cutie: row["Nr. cutie"] || row["nr_cutie"] || null,
+          nr_cutie: row["Nr. cutie"] || row["nr_cutie"] ? Number(row["Nr. cutie"] || row["nr_cutie"]) : null,
           inventar_id: inventarId,
         }));
 
+        // Validate nr_crt
+        const nrCrtValues = dosareData.map(d => d.nr_crt);
+        const nrCrtSet = new Set(nrCrtValues);
+
+        // Check for duplicates in import file
+        if (nrCrtSet.size !== nrCrtValues.length) {
+          throw new Error("Fișierul conține numere curente duplicate");
+        }
+
+        // Check for duplicates with existing data
+        const duplicates = nrCrtValues.filter(nr => existingNrCrt.has(nr));
+        if (duplicates.length > 0) {
+          throw new Error(`Numerele curente ${duplicates.join(", ")} există deja în baza de date`);
+        }
+
+        // Check for gaps in sequence
+        const sortedNrCrt = [...nrCrtValues].sort((a, b) => a - b);
+        for (let i = 1; i < sortedNrCrt.length; i++) {
+          if (sortedNrCrt[i] !== sortedNrCrt[i - 1] + 1) {
+            throw new Error(`Lipsește numărul curent ${sortedNrCrt[i - 1] + 1} în secvență`);
+          }
+        }
+
+        // Validate that nr_crt starts from 1 or continues from existing
+        const maxExisting = existingDosare && existingDosare.length > 0 
+          ? Math.max(...existingDosare.map(d => d.nr_crt)) 
+          : 0;
+        
+        if (sortedNrCrt[0] !== maxExisting + 1 && sortedNrCrt[0] !== 1) {
+          throw new Error(`Primul număr curent trebuie să fie ${maxExisting > 0 ? maxExisting + 1 : 1}, nu ${sortedNrCrt[0]}`);
+        }
+
         const { error } = await supabase.from("dosare").insert(dosareData);
 
-        if (error) {
-          toast({
-            variant: "destructive",
-            title: "Eroare la import",
-            description: "Verificați formatul fișierului",
-          });
-        } else {
-          // Log import event
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("username")
-              .eq("id", user.id)
-              .single();
+        if (error) throw error;
 
-            await supabase.from("audit_logs").insert({
-              user_id: user.id,
-              username: profile?.username || "unknown",
-              action: "IMPORT_EXCEL",
-              table_name: "dosare",
-              record_id: inventarId,
-              details: {
-                count: dosareData.length,
-                inventar_an: inventarAn,
-              },
-            });
-          }
+        // Log import event
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("username")
+            .eq("id", user.id)
+            .single();
 
-          toast({
-            title: "Import reușit",
-            description: `${dosareData.length} dosare au fost importate`,
+          await supabase.from("audit_logs").insert({
+            user_id: user.id,
+            username: profile?.username || "unknown",
+            action: "IMPORT_EXCEL",
+            table_name: "dosare",
+            record_id: inventarId,
+            details: {
+              count: dosareData.length,
+              nr_crt_range: `${sortedNrCrt[0]}-${sortedNrCrt[sortedNrCrt.length - 1]}`,
+              inventar_an: inventarAn,
+            },
           });
-          loadDosare();
         }
-      } catch (error) {
+
+        toast({
+          title: "Import reușit",
+          description: `${dosareData.length} dosare au fost importate`,
+        });
+        loadDosare();
+      } catch (error: any) {
         toast({
           variant: "destructive",
           title: "Eroare la import",
-          description: "Verificați formatul fișierului",
+          description: error.message || "Verificați formatul fișierului",
         });
       }
     };
