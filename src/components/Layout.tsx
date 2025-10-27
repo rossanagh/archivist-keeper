@@ -37,20 +37,8 @@ const Layout = ({ children }: LayoutProps) => {
       }
     });
 
-    // Auto logout on window/tab close
-    const handleBeforeUnload = async () => {
-      if (user) {
-        await supabase.auth.signOut();
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      subscription.unsubscribe();
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [user]);
+    return () => subscription.unsubscribe();
+  }, []);
 
   const checkAdminStatus = async (userId: string) => {
     const { data } = await supabase
