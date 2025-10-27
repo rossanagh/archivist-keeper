@@ -294,6 +294,9 @@ const Dosare = () => {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws); // Read all data directly
 
+        console.log("Excel data parsed:", data);
+        console.log("First row sample:", data[0]);
+
         if (!data.length) {
           throw new Error("Fișierul nu conține date valide");
         }
@@ -316,6 +319,8 @@ const Dosare = () => {
           const observatii = row["Observații"] || row["observatii"];
           const nrCutie = row["Nr. cutie"] || row["nr_cutie"];
 
+          console.log("Processing row:", { nrCrt, indicativ, continut, dateExtreme, numarFile });
+
           return {
             nr_crt: Number(nrCrt),
             indicativ_nomenclator: indicativ,
@@ -327,6 +332,8 @@ const Dosare = () => {
             inventar_id: inventarId,
           };
         });
+
+        console.log("Processed dosare data:", dosareData);
 
         // Validate nr_crt
         const nrCrtValues = dosareData.map(d => d.nr_crt);
