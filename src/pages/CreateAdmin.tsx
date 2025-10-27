@@ -1,22 +1,69 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { authSchema } from "@/lib/validations";
+import { z } from "zod";
 
 const CreateAdmin = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    checkAdminAccess();
+  }, []);
+
+  const checkAdminAccess = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        navigate('/auth');
+        return;
+      }
+      
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      
+      if (!data) {
+        toast({
+          variant: "destructive",
+          title: "Acces interzis",
+          description: "Nu aveți permisiuni de administrator.",
+        });
+        navigate('/fonduri');
+        return;
+      }
+      
+      setIsAdmin(true);
+    } catch (error) {
+      console.error('Auth check error:', error);
+      navigate('/auth');
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Validate input
+      const validated = authSchema.parse({ username, password });
       // Check if username already exists
       const { data: existingProfile } = await supabase
         .from("profiles")
@@ -62,15 +109,37 @@ const CreateAdmin = () => {
         setPassword("");
       }
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Eroare la crearea adminului",
-        description: error.message,
-      });
+      if (error instanceof z.ZodError) {
+        toast({
+          variant: "destructive",
+          title: "Eroare de validare",
+          description: error.errors[0].message,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Eroare la crearea adminului",
+          description: error.message,
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  if (checkingAuth) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <div>Se verifică permisiunile...</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <Layout>

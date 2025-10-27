@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
+import { authSchema } from "@/lib/validations";
+import { z } from "zod";
 
 const Auth = () => {
   const [username, setUsername] = useState("");
@@ -19,10 +21,13 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const email = `${username}@inventory.local`;
+      // Validate input
+      const validated = authSchema.parse({ username, password });
+      
+      const email = `${validated.username}@inventory.local`;
       const { error } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password: validated.password,
       });
 
       if (error) throw error;
@@ -46,11 +51,19 @@ const Auth = () => {
       });
       navigate("/fonduri");
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Eroare la autentificare",
-        description: error.message,
-      });
+      if (error instanceof z.ZodError) {
+        toast({
+          variant: "destructive",
+          title: "Eroare de validare",
+          description: error.errors[0].message,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Eroare la autentificare",
+          description: error.message,
+        });
+      }
     } finally {
       setLoading(false);
     }
