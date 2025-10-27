@@ -26,7 +26,7 @@ jobs:
           }
           $packageJson.scripts | Add-Member -MemberType NoteProperty -Name "dev" -Value "vite" -Force
           $packageJson.scripts | Add-Member -MemberType NoteProperty -Name "build" -Value "tsc && vite build" -Force
-          $packageJson.scripts | Add-Member -MemberType NoteProperty -Name "electron:build" -Value "npm run build && electron-builder --win portable" -Force
+          $packageJson.scripts | Add-Member -MemberType NoteProperty -Name "electron:build" -Value "npm run build && electron-builder --win portable --win zip" -Force
           $packageJson | ConvertTo-Json -Depth 100 | Set-Content package.json
         shell: pwsh
 
@@ -41,8 +41,14 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
-      - name: Upload artifact
+      - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
           name: InventoryApp-Portable
           path: dist-electron/InventoryApp-Portable.exe
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: InventoryApp-ZIP
+          path: dist-electron/InventoryApp*.zip

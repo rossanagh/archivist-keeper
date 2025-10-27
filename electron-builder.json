@@ -15,6 +15,10 @@
       {
         "target": "portable",
         "arch": ["x64"]
+      },
+      {
+        "target": "zip",
+        "arch": ["x64"]
       }
     ],
     "icon": "public/pwa-512x512.png",
