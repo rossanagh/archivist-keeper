@@ -45,32 +45,31 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { username, newPassword } = await req.json();
+    const { currentPassword, newPassword } = await req.json();
 
-    if (!username || !newPassword) {
+    if (!currentPassword || !newPassword) {
       return new Response(
-        JSON.stringify({ error: 'Username and newPassword are required' }),
+        JSON.stringify({ error: 'Current password and new password are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Find user by username
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('username', username)
-      .maybeSingle();
+    // Verify current password by attempting to sign in
+    const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+      email: user.email!,
+      password: currentPassword,
+    });
 
-    if (profileError || !profile) {
+    if (signInError) {
       return new Response(
-        JSON.stringify({ error: `User '${username}' not found` }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Current password is incorrect' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Update user password
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      profile.id,
+      user.id,
       { password: newPassword }
     );
 
@@ -81,18 +80,25 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Get username for audit log
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .maybeSingle();
+
     // Log the password change
     await supabaseAdmin.from('audit_logs').insert({
       user_id: user.id,
-      username: user.email?.split('@')[0] || 'unknown',
+      username: profile?.username || user.email?.split('@')[0] || 'unknown',
       action: 'PASSWORD_CHANGE',
       table_name: 'auth.users',
-      record_id: profile.id,
-      details: { target_username: username, timestamp: new Date().toISOString() }
+      record_id: user.id,
+      details: { timestamp: new Date().toISOString() }
     });
 
     return new Response(
-      JSON.stringify({ success: true, message: `Password updated for user '${username}'` }),
+      JSON.stringify({ success: true, message: 'Password updated successfully' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

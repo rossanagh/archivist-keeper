@@ -9,13 +9,18 @@ import Layout from "@/components/Layout";
 import { z } from "zod";
 
 const passwordSchema = z.object({
-  username: z.string().min(1, "Username este obligatoriu"),
-  newPassword: z.string().min(6, "Parola trebuie să aibă minim 6 caractere")
+  currentPassword: z.string().min(1, "Parola actuală este obligatorie"),
+  newPassword: z.string().min(6, "Parola nouă trebuie să aibă minim 6 caractere"),
+  confirmPassword: z.string().min(6, "Confirmarea parolei este obligatorie")
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Parolele noi nu coincid",
+  path: ["confirmPassword"],
 });
 
 const PasswordManagement = () => {
-  const [username, setUsername] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -70,7 +75,11 @@ const PasswordManagement = () => {
     setLoading(true);
 
     try {
-      const validated = passwordSchema.parse({ username, newPassword });
+      const validated = passwordSchema.parse({ 
+        currentPassword, 
+        newPassword, 
+        confirmPassword 
+      });
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -86,7 +95,7 @@ const PasswordManagement = () => {
             "Authorization": `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            username: validated.username,
+            currentPassword: validated.currentPassword,
             newPassword: validated.newPassword,
           }),
         }
@@ -100,11 +109,12 @@ const PasswordManagement = () => {
 
       toast({
         title: "Succes",
-        description: `Parola pentru utilizatorul '${validated.username}' a fost actualizată`,
+        description: "Parola a fost actualizată cu succes",
       });
 
-      setUsername("");
+      setCurrentPassword("");
       setNewPassword("");
+      setConfirmPassword("");
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast({
@@ -143,19 +153,19 @@ const PasswordManagement = () => {
       <div className="flex items-center justify-center min-h-[80vh]">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Gestionare Parole</CardTitle>
+            <CardTitle>Schimbare Parolă</CardTitle>
             <CardDescription>
-              Actualizați parola pentru orice utilizator din sistem
+              Actualizați parola pentru contul dvs.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleUpdatePassword} className="space-y-4">
               <div className="space-y-2">
                 <Input
-                  type="text"
-                  placeholder="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  type="password"
+                  placeholder="Parola Actuală"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
                   required
                 />
               </div>
@@ -165,6 +175,16 @@ const PasswordManagement = () => {
                   placeholder="Parolă Nouă"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+              <div className="space-y-2">
+                <Input
+                  type="password"
+                  placeholder="Confirmă Parola Nouă"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={6}
                 />
