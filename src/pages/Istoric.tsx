@@ -59,27 +59,56 @@ const Istoric = () => {
       INSERT: "Adăugare",
       UPDATE: "Modificare",
       DELETE: "Ștergere",
-      IMPORT_EXCEL: "Import Excel",
-      EXPORT_EXCEL: "Export Excel"
+      IMPORT_EXCEL: "Import",
+      EXPORT_EXCEL: "Export"
     };
 
     const table = tableName ? tableLabels[tableName] || tableName : "";
     const actionLabel = actionLabels[action] || action;
 
-    // Special formatting for dosare actions
-    if (tableName === "dosare" && details) {
-      if (action === "INSERT" && details.nr_crt) {
-        return `Adăugare Dosar nr. crt ${details.nr_crt}`;
-      }
-      if (action === "IMPORT_EXCEL" && details.nr_crt_range) {
-        return `Import Excel Dosare nr. crt ${details.nr_crt_range}`;
-      }
-      if (action === "EXPORT_EXCEL" && details.nr_crt_range) {
-        return `Export Excel Dosare nr. crt ${details.nr_crt_range}`;
-      }
+    return table ? `${actionLabel} ${table}` : actionLabel;
+  };
+
+  const getDetailsSummary = (action: string, tableName: string | null, details: any) => {
+    if (!details) return "";
+
+    const parts: string[] = [];
+
+    // Add nr_crt or nr_crt_range if available
+    if (details.nr_crt) {
+      parts.push(`nr crt ${details.nr_crt}`);
+    } else if (details.nr_crt_range) {
+      parts.push(`nr crt ${details.nr_crt_range}`);
+    } else if (details.nume) {
+      parts.push(details.nume);
     }
 
-    return table ? `${actionLabel} ${table}` : actionLabel;
+    // Add inventory year
+    if (details.inventar_an) {
+      parts.push(`Inventar ${details.inventar_an}`);
+    }
+
+    // Add compartiment
+    if (details.compartiment) {
+      parts.push(`Compartiment ${details.compartiment}`);
+    }
+
+    // Add fond
+    if (details.fond) {
+      parts.push(`Fond ${details.fond}`);
+    }
+
+    // Add termen_pastrare if available
+    if (details.termen_pastrare) {
+      parts.push(`${details.termen_pastrare} ani`);
+    }
+
+    // Add count for bulk operations
+    if (details.count) {
+      parts.push(`${details.count} înregistrări`);
+    }
+
+    return parts.join(" / ");
   };
 
   return (
@@ -128,18 +157,7 @@ const Istoric = () => {
                         <TableCell className="font-medium">{log.username}</TableCell>
                         <TableCell>{getActionLabel(log.action, log.table_name, log.details)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          <div className="space-y-1">
-                            {log.details?.nume && <div>Nume: {log.details.nume}</div>}
-                            {log.details?.inventar_an && (
-                              <div className="font-medium text-foreground">
-                                din Inventar {log.details.inventar_an}
-                                {log.details?.compartiment && `, Compartiment: ${log.details.compartiment}`}
-                                {log.details?.fond && `, Fond: ${log.details.fond}`}
-                                {log.details?.termen_pastrare && ` (${log.details.termen_pastrare} ani)`}
-                              </div>
-                            )}
-                            {log.details?.count && <div>{log.details.count} înregistrări</div>}
-                          </div>
+                          {getDetailsSummary(log.action, log.table_name, log.details)}
                         </TableCell>
                       </TableRow>
                     ))}
