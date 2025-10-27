@@ -82,6 +82,36 @@ const Istoric = () => {
     return table ? `${actionLabel} ${table}` : actionLabel;
   };
 
+  const getDetailsSummary = (log: AuditLog) => {
+    const parts: string[] = [];
+    
+    if (log.details?.nr_crt_range) {
+      parts.push(`nr crt ${log.details.nr_crt_range}`);
+    }
+    
+    if (log.details?.inventar_an) {
+      parts.push(`Inventar ${log.details.inventar_an}`);
+    }
+    
+    if (log.details?.compartiment) {
+      parts.push(`Compartiment ${log.details.compartiment}`);
+    }
+    
+    if (log.details?.fond) {
+      parts.push(`Fond ${log.details.fond}`);
+    }
+    
+    if (log.details?.nume) {
+      parts.push(log.details.nume);
+    }
+    
+    if (log.details?.count && !log.details?.nr_crt_range) {
+      parts.push(`${log.details.count} înregistrări`);
+    }
+    
+    return parts.length > 0 ? parts.join(" / ") : "-";
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -128,18 +158,7 @@ const Istoric = () => {
                         <TableCell className="font-medium">{log.username}</TableCell>
                         <TableCell>{getActionLabel(log.action, log.table_name, log.details)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          <div className="space-y-1">
-                            {log.details?.nume && <div>Nume: {log.details.nume}</div>}
-                            {log.details?.inventar_an && (
-                              <div className="font-medium text-foreground">
-                                din Inventar {log.details.inventar_an}
-                                {log.details?.compartiment && `, Compartiment: ${log.details.compartiment}`}
-                                {log.details?.fond && `, Fond: ${log.details.fond}`}
-                                {log.details?.termen_pastrare && ` (${log.details.termen_pastrare} ani)`}
-                              </div>
-                            )}
-                            {log.details?.count && <div>{log.details.count} înregistrări</div>}
-                          </div>
+                          {getDetailsSummary(log)}
                         </TableCell>
                       </TableRow>
                     ))}
