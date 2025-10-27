@@ -51,6 +51,15 @@ const Dosare = () => {
     };
   }, [inventarId]);
 
+  useEffect(() => {
+    // Reload admin status periodically
+    const interval = setInterval(() => {
+      checkAdmin();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const checkAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
