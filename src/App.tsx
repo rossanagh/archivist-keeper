@@ -11,6 +11,7 @@ import Inventare from "./pages/Inventare";
 import Dosare from "./pages/Dosare";
 import Istoric from "./pages/Istoric";
 import CreateAdmin from "./pages/CreateAdmin";
+import PasswordManagement from "./pages/PasswordManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/fonduri/:fondId/compartimente/:compartimentId/inventare/:inventarId/dosare" element={<Dosare />} />
           <Route path="/istoric" element={<Istoric />} />
           <Route path="/create-admin" element={<CreateAdmin />} />
+          <Route path="/password-management" element={<PasswordManagement />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

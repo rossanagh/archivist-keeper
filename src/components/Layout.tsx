@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Archive, LogOut, LogIn, History, UserPlus } from "lucide-react";
+import { Archive, LogOut, LogIn, History, UserPlus, KeyRound } from "lucide-react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface LayoutProps {
@@ -111,6 +111,10 @@ const Layout = ({ children }: LayoutProps) => {
                 <Button variant="outline" size="sm" onClick={() => navigate("/istoric")}>
                   <History className="h-4 w-4 mr-2" />
                   Istoric
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate("/password-management")}>
+                  <KeyRound className="h-4 w-4 mr-2" />
+                  Gestionare Parole
                 </Button>
                 {username === "ghitaoarga" && (
                   <Button variant="outline" size="sm" onClick={() => navigate("/create-admin")}>
