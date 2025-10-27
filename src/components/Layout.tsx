@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Archive, LogOut, LogIn } from "lucide-react";
+import { Archive, LogOut, LogIn, History, UserPlus } from "lucide-react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface LayoutProps {
@@ -64,6 +64,19 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   const handleLogout = async () => {
+    // Log the logout event before signing out
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("audit_logs").insert({
+        user_id: user.id,
+        username: username,
+        action: "LOGOUT",
+        table_name: null,
+        record_id: null,
+        details: { timestamp: new Date().toISOString() }
+      });
+    }
+    
     await supabase.auth.signOut();
     setIsAdmin(false);
     setUsername("");
@@ -96,6 +109,16 @@ const Layout = ({ children }: LayoutProps) => {
                     Admin
                   </span>
                 </div>
+                <Button variant="outline" size="sm" onClick={() => navigate("/istoric")}>
+                  <History className="h-4 w-4 mr-2" />
+                  Istoric
+                </Button>
+                {username === "ghitaoarga" && (
+                  <Button variant="outline" size="sm" onClick={() => navigate("/create-admin")}>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Creare Admin
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Deconectare

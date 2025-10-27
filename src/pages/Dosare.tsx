@@ -27,6 +27,9 @@ const Dosare = () => {
   const { fondId, compartimentId, inventarId } = useParams();
   const [dosare, setDosare] = useState<Dosar[]>([]);
   const [inventarAn, setInventarAn] = useState<number>(0);
+  const [inventarTermen, setInventarTermen] = useState<number>(0);
+  const [fondNume, setFondNume] = useState<string>("");
+  const [compartimentNume, setCompartimentNume] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState<string>("");
   const [open, setOpen] = useState(false);
@@ -47,6 +50,8 @@ const Dosare = () => {
 
   useEffect(() => {
     loadInventar();
+    loadFond();
+    loadCompartiment();
     loadDosare();
     checkAdmin();
 
@@ -81,10 +86,31 @@ const Dosare = () => {
   const loadInventar = async () => {
     const { data } = await supabase
       .from("inventare")
-      .select("an")
+      .select("an, termen_pastrare")
       .eq("id", inventarId)
       .single();
-    if (data) setInventarAn(data.an);
+    if (data) {
+      setInventarAn(data.an);
+      setInventarTermen(data.termen_pastrare);
+    }
+  };
+
+  const loadFond = async () => {
+    const { data } = await supabase
+      .from("fonduri")
+      .select("nume")
+      .eq("id", fondId)
+      .single();
+    if (data) setFondNume(data.nume);
+  };
+
+  const loadCompartiment = async () => {
+    const { data } = await supabase
+      .from("compartimente")
+      .select("nume")
+      .eq("id", compartimentId)
+      .single();
+    if (data) setCompartimentNume(data.nume);
   };
 
   const loadDosare = async () => {
@@ -157,9 +183,19 @@ const Dosare = () => {
     }
   };
 
-  const handleExport = () => {
-    const ws = XLSX.utils.json_to_sheet(
-      dosare.map((d) => ({
+  const handleExport = async () => {
+    try {
+      // Create header rows
+      const headerData = [
+        [`Fond: ${fondNume}`],
+        [`Compartiment: ${compartimentNume}`],
+        [`An inventar: ${inventarAn}`],
+        [`Termen de păstrare: ${inventarTermen} ani`],
+        [], // Empty row
+      ];
+
+      // Create data rows
+      const dosareData = dosare.map((d) => ({
         "Nr. crt": d.nr_crt,
         "Indicativ nomenclator": d.indicativ_nomenclator,
         "Conținut": d.continut,
@@ -167,15 +203,51 @@ const Dosare = () => {
         "Număr file": d.numar_file,
         "Observații": d.observatii || "",
         "Nr. cutie": d.nr_cutie || "",
-      }))
-    );
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Dosare");
-    XLSX.writeFile(wb, `Inventar_${inventarAn}.xlsx`);
-    toast({
-      title: "Export reușit",
-      description: "Fișierul a fost descărcat",
-    });
+      }));
+
+      // Convert to worksheet
+      const ws = XLSX.utils.aoa_to_sheet(headerData);
+      XLSX.utils.sheet_add_json(ws, dosareData, { origin: -1 });
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Dosare");
+      XLSX.writeFile(wb, `Inventar_${inventarAn}.xlsx`);
+
+      // Log export event
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .single();
+
+        await supabase.from("audit_logs").insert({
+          user_id: user.id,
+          username: profile?.username || "unknown",
+          action: "EXPORT_EXCEL",
+          table_name: "dosare",
+          record_id: inventarId,
+          details: {
+            count: dosare.length,
+            inventar_an: inventarAn,
+            fond: fondNume,
+            compartiment: compartimentNume,
+          },
+        });
+      }
+
+      toast({
+        title: "Export reușit",
+        description: "Fișierul a fost descărcat",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Eroare la export",
+        description: "Nu s-a putut exporta fișierul",
+      });
+    }
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,38 +256,68 @@ const Dosare = () => {
 
     const reader = new FileReader();
     reader.onload = async (evt) => {
-      const bstr = evt.target?.result;
-      const wb = XLSX.read(bstr, { type: "binary" });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws);
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: "binary" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws, { range: 5 }); // Skip first 5 rows (header info)
 
-      const dosareData = data.map((row: any) => ({
-        nr_crt: row["Nr. crt"] || row["nr_crt"],
-        indicativ_nomenclator:
-          row["Indicativ nomenclator"] || row["indicativ_nomenclator"],
-        continut: row["Conținut"] || row["continut"],
-        date_extreme: row["Date extreme"] || row["date_extreme"],
-        numar_file: row["Număr file"] || row["numar_file"],
-        observatii: row["Observații"] || row["observatii"] || null,
-        nr_cutie: row["Nr. cutie"] || row["nr_cutie"] || null,
-        inventar_id: inventarId,
-      }));
+        const dosareData = data.map((row: any) => ({
+          nr_crt: row["Nr. crt"] || row["nr_crt"],
+          indicativ_nomenclator:
+            row["Indicativ nomenclator"] || row["indicativ_nomenclator"],
+          continut: row["Conținut"] || row["continut"],
+          date_extreme: row["Date extreme"] || row["date_extreme"],
+          numar_file: row["Număr file"] || row["numar_file"],
+          observatii: row["Observații"] || row["observatii"] || null,
+          nr_cutie: row["Nr. cutie"] || row["nr_cutie"] || null,
+          inventar_id: inventarId,
+        }));
 
-      const { error } = await supabase.from("dosare").insert(dosareData);
+        const { error } = await supabase.from("dosare").insert(dosareData);
 
-      if (error) {
+        if (error) {
+          toast({
+            variant: "destructive",
+            title: "Eroare la import",
+            description: "Verificați formatul fișierului",
+          });
+        } else {
+          // Log import event
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("username")
+              .eq("id", user.id)
+              .single();
+
+            await supabase.from("audit_logs").insert({
+              user_id: user.id,
+              username: profile?.username || "unknown",
+              action: "IMPORT_EXCEL",
+              table_name: "dosare",
+              record_id: inventarId,
+              details: {
+                count: dosareData.length,
+                inventar_an: inventarAn,
+              },
+            });
+          }
+
+          toast({
+            title: "Import reușit",
+            description: `${dosareData.length} dosare au fost importate`,
+          });
+          loadDosare();
+        }
+      } catch (error) {
         toast({
           variant: "destructive",
           title: "Eroare la import",
           description: "Verificați formatul fișierului",
         });
-      } else {
-        toast({
-          title: "Import reușit",
-          description: `${dosareData.length} dosare au fost importate`,
-        });
-        loadDosare();
       }
     };
     reader.readAsBinaryString(file);

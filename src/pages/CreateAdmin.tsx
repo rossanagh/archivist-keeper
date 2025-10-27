@@ -1,54 +1,70 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import Layout from "@/components/Layout";
 
-const Auth = () => {
+const CreateAdmin = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const email = `${username}@inventory.local`;
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Check if username already exists
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("username", username)
+        .maybeSingle();
 
-      if (error) throw error;
-
-      // Log the login event
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("audit_logs").insert({
-          user_id: user.id,
-          username: username,
-          action: "LOGIN",
-          table_name: null,
-          record_id: null,
-          details: { timestamp: new Date().toISOString() }
-        });
+      if (existingProfile) {
+        throw new Error("Acest username există deja");
       }
 
-      toast({
-        title: "Autentificare reușită",
-        description: "Bun venit!",
+      // Create auth user
+      const email = `${username}@inventory.local`;
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username: username,
+          },
+        },
       });
-      navigate("/fonduri");
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Add admin role
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({
+            user_id: authData.user.id,
+            role: "admin",
+          });
+
+        if (roleError) throw roleError;
+
+        toast({
+          title: "Admin creat cu succes",
+          description: `Utilizatorul ${username} a fost adăugat ca administrator.`,
+        });
+
+        setUsername("");
+        setPassword("");
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Eroare la autentificare",
+        title: "Eroare la crearea adminului",
         description: error.message,
       });
     } finally {
@@ -61,13 +77,13 @@ const Auth = () => {
       <div className="flex items-center justify-center min-h-[80vh]">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Autentificare Admin</CardTitle>
+            <CardTitle>Creare Cont Administrator</CardTitle>
             <CardDescription>
-              Introduceți credențialele pentru a accesa sistemul
+              Creați un nou cont de administrator pentru sistem
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleCreateAdmin} className="space-y-4">
               <div className="space-y-2">
                 <Input
                   type="text"
@@ -89,7 +105,7 @@ const Auth = () => {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Se autentifică..." : "Autentificare"}
+                {loading ? "Se creează..." : "Creare Administrator"}
               </Button>
             </form>
           </CardContent>
@@ -99,4 +115,4 @@ const Auth = () => {
   );
 };
 
-export default Auth;
+export default CreateAdmin;
