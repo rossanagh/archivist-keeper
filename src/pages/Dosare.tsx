@@ -182,7 +182,13 @@ const Dosare = () => {
           action: "INSERT",
           table_name: "dosare",
           record_id: inventarId,
-          details: { nr_crt: nrCrt },
+          details: {
+            nr_crt: nrCrt,
+            inventar_an: inventarAn,
+            fond: fondNume,
+            compartiment: compartimentNume,
+            termen_pastrare: inventarTermen,
+          },
         });
       }
 
@@ -257,6 +263,7 @@ const Dosare = () => {
             inventar_an: inventarAn,
             fond: fondNume,
             compartiment: compartimentNume,
+            termen_pastrare: inventarTermen,
           },
         });
       }
@@ -285,7 +292,7 @@ const Dosare = () => {
         const wb = XLSX.read(bstr, { type: "binary" });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws, { range: 5 }); // Skip first 5 rows (header info)
+        const data = XLSX.utils.sheet_to_json(ws); // Read all data directly
 
         if (!data.length) {
           throw new Error("Fișierul nu conține date valide");
@@ -299,17 +306,27 @@ const Dosare = () => {
 
         const existingNrCrt = new Set(existingDosare?.map(d => d.nr_crt) || []);
 
-        const dosareData = data.map((row: any) => ({
-          nr_crt: Number(row["Nr. crt"] || row["nr_crt"]),
-          indicativ_nomenclator:
-            row["Indicativ nomenclator"] || row["indicativ_nomenclator"],
-          continut: row["Conținut"] || row["continut"],
-          date_extreme: row["Date extreme"] || row["date_extreme"],
-          numar_file: Number(row["Număr file"] || row["numar_file"]),
-          observatii: row["Observații"] || row["observatii"] || null,
-          nr_cutie: row["Nr. cutie"] || row["nr_cutie"] ? Number(row["Nr. cutie"] || row["nr_cutie"]) : null,
-          inventar_id: inventarId,
-        }));
+        const dosareData = data.map((row: any) => {
+          // Handle both column name formats
+          const nrCrt = row["__EMPTY"] || row["Nr. crt"] || row["nr_crt"];
+          const indicativ = row["Indicativ nomenclator"] || row["indicativ_nomenclator"];
+          const continut = row["Conținut"] || row["continut"];
+          const dateExtreme = row["Date extreme"] || row["date_extreme"];
+          const numarFile = row["Număr file"] || row["numar_file"];
+          const observatii = row["Observații"] || row["observatii"];
+          const nrCutie = row["Nr. cutie"] || row["nr_cutie"];
+
+          return {
+            nr_crt: Number(nrCrt),
+            indicativ_nomenclator: indicativ,
+            continut: continut,
+            date_extreme: dateExtreme,
+            numar_file: Number(numarFile),
+            observatii: observatii || null,
+            nr_cutie: nrCutie ? Number(nrCutie) : null,
+            inventar_id: inventarId,
+          };
+        });
 
         // Validate nr_crt
         const nrCrtValues = dosareData.map(d => d.nr_crt);
@@ -366,6 +383,9 @@ const Dosare = () => {
               count: dosareData.length,
               nr_crt_range: `${sortedNrCrt[0]}-${sortedNrCrt[sortedNrCrt.length - 1]}`,
               inventar_an: inventarAn,
+              fond: fondNume,
+              compartiment: compartimentNume,
+              termen_pastrare: inventarTermen,
             },
           });
         }

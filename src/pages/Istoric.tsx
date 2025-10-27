@@ -104,10 +104,20 @@ const Istoric = () => {
                         <TableCell className="font-medium">{log.username}</TableCell>
                         <TableCell>{getActionLabel(log.action, log.table_name)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {log.details?.nume && `Nume: ${log.details.nume}`}
-                          {log.details?.count && `Înregistrări: ${log.details.count}`}
-                          {log.details?.nr_crt && `, Nr. crt: ${log.details.nr_crt}`}
-                          {log.details?.nr_crt_range && `, Interval: ${log.details.nr_crt_range}`}
+                          <div className="space-y-1">
+                            {log.details?.nume && <div>Nume: {log.details.nume}</div>}
+                            {log.details?.fond && (
+                              <div className="font-medium text-foreground">
+                                Fond: {log.details.fond}
+                                {log.details?.compartiment && ` / Compartiment: ${log.details.compartiment}`}
+                                {log.details?.inventar_an && ` / Inventar: ${log.details.inventar_an}`}
+                                {log.details?.termen_pastrare && ` (${log.details.termen_pastrare} ani)`}
+                              </div>
+                            )}
+                            {log.details?.count && <div>Înregistrări: {log.details.count}</div>}
+                            {log.details?.nr_crt && <div>Nr. crt: {log.details.nr_crt}</div>}
+                            {log.details?.nr_crt_range && <div>Interval: {log.details.nr_crt_range}</div>}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
