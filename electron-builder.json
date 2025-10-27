@@ -24,6 +24,6 @@
     "artifactName": "InventoryApp-Portable.exe"
   },
   "extraMetadata": {
-    "main": "electron/main.js"
+    "main": "electron/main.cjs"
   }
 }
