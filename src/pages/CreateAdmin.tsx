@@ -27,7 +27,7 @@ const CreateAdmin = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        navigate('/auth');
+        navigate('/');
         return;
       }
       

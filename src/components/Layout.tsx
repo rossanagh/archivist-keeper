@@ -82,7 +82,7 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   const handleLoginClick = () => {
-    navigate("/auth");
+    navigate("/");
   };
 
   return (
