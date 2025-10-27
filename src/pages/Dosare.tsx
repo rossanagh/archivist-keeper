@@ -35,6 +35,7 @@ const Dosare = () => {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
   const dosarePerPage = 10;
   const [formData, setFormData] = useState({
     nr_crt: "",
@@ -49,38 +50,50 @@ const Dosare = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadInventar();
-    loadFond();
-    loadCompartiment();
-    loadDosare();
-    checkAdmin();
+    checkAuthAndLoadData();
 
     return () => {
       unlockInventar();
     };
   }, [inventarId]);
 
+  const checkAuthAndLoadData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    setUserId(user.id);
+    await loadInventar();
+    await loadFond();
+    await loadCompartiment();
+    await loadDosare();
+    await checkAdmin(user.id);
+    setLoading(false);
+  };
+
   useEffect(() => {
     // Reload admin status periodically
-    const interval = setInterval(() => {
-      checkAdmin();
+    const interval = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await checkAdmin(user.id);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
-  const checkAdmin = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setUserId(user.id);
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-      setIsAdmin(!!data);
-    }
+  const checkAdmin = async (userId: string) => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    setIsAdmin(!!data);
   };
 
   const loadInventar = async () => {
@@ -458,6 +471,16 @@ const Dosare = () => {
   const indexOfLastDosar = currentPage * dosarePerPage;
   const indexOfFirstDosar = indexOfLastDosar - dosarePerPage;
   const currentDosare = filteredDosare.slice(indexOfFirstDosar, indexOfLastDosar);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <p className="text-muted-foreground">Se încarcă...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

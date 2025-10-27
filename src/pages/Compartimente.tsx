@@ -24,35 +24,48 @@ const Compartimente = () => {
   const [open, setOpen] = useState(false);
   const [nume, setNume] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    loadFond();
-    loadCompartimente();
-    checkAdmin();
+    checkAuthAndLoadData();
   }, [fondId]);
+
+  const checkAuthAndLoadData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    await loadFond();
+    await loadCompartimente();
+    await checkAdmin(user.id);
+    setLoading(false);
+  };
 
   useEffect(() => {
     // Reload admin status periodically
-    const interval = setInterval(() => {
-      checkAdmin();
+    const interval = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await checkAdmin(user.id);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
-  const checkAdmin = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-      setIsAdmin(!!data);
-    }
+  const checkAdmin = async (userId: string) => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    setIsAdmin(!!data);
   };
 
   const loadFond = async () => {
@@ -108,6 +121,16 @@ const Compartimente = () => {
   const filteredCompartimente = compartimente.filter((comp) =>
     comp.nume.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <p className="text-muted-foreground">Se încarcă...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
