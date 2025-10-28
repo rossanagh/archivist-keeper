@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
@@ -17,6 +17,40 @@ Deno.serve(async (req) => {
         }
       }
     )
+
+    // Verify the requesting user is authenticated and is an admin
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Check if user has admin role
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle()
+
+    if (roleError || !roleData) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     const { userId } = await req.json()
 
@@ -30,18 +64,56 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Delete user from auth.users
-    const { error } = await supabaseClient.auth.admin.deleteUser(userId)
-
-    if (error) {
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(userId)) {
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: 'Invalid user ID format' }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
+
+    // Get username for audit log before deletion
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('username')
+      .eq('id', userId)
+      .maybeSingle()
+
+    // Delete user from auth.users
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+    if (error) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to delete user' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // Log the deletion
+    const { data: adminProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    await supabaseAdmin.from('audit_logs').insert({
+      user_id: user.id,
+      username: adminProfile?.username || user.email?.split('@')[0] || 'unknown',
+      action: 'DELETE',
+      table_name: 'auth.users',
+      record_id: userId,
+      details: { 
+        deleted_username: profile?.username || 'unknown',
+        timestamp: new Date().toISOString() 
+      }
+    })
 
     return new Response(
       JSON.stringify({ success: true }),
