@@ -95,6 +95,7 @@ serve(async (req) => {
     }
 
     // Create the new admin user
+    // Note: The handle_new_user trigger automatically assigns admin role to all new users
     const email = `${username}@inventory.local`;
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -120,23 +121,8 @@ serve(async (req) => {
       );
     }
 
-    // Add admin role (using service role bypasses RLS)
-    const { error: roleInsertError } = await supabaseAdmin
-      .from("user_roles")
-      .insert({
-        user_id: authData.user.id,
-        role: "admin",
-      });
-
-    if (roleInsertError) {
-      console.error("Role insert error:", roleInsertError);
-      // Attempt to clean up the created user
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      return new Response(
-        JSON.stringify({ error: "Nu s-a putut adăuga rolul de admin" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Admin role is automatically assigned by the handle_new_user trigger
+    // No need to manually insert into user_roles table
 
     // Log the action
     const { data: requestingUserProfile } = await supabaseAdmin
