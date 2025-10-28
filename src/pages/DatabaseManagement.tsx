@@ -20,7 +20,6 @@ const DatabaseManagement = () => {
   const [fonduri, setFonduri] = useState<any[]>([]);
   const [compartimente, setCompartimente] = useState<any[]>([]);
   const [inventare, setInventare] = useState<any[]>([]);
-  const [dosare, setDosare] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   
   const [editOpen, setEditOpen] = useState(false);
@@ -71,13 +70,11 @@ const DatabaseManagement = () => {
     const { data: fonduriData } = await supabase.from("fonduri").select("*").order("created_at", { ascending: false });
     const { data: compartimenteData } = await supabase.from("compartimente").select("*").order("created_at", { ascending: false });
     const { data: inventareData } = await supabase.from("inventare").select("*").order("created_at", { ascending: false });
-    const { data: dosareData } = await supabase.from("dosare").select("*").order("created_at", { ascending: false });
     const { data: usersData } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
     
     setFonduri(fonduriData || []);
     setCompartimente(compartimenteData || []);
     setInventare(inventareData || []);
-    setDosare(dosareData || []);
     setUsers(usersData || []);
   };
 
@@ -118,7 +115,11 @@ const DatabaseManagement = () => {
 
   const confirmDelete = async () => {
     if (currentTable === "profiles") {
-      const { error } = await supabase.auth.admin.deleteUser(deletingItem.id);
+      // Call edge function to delete user
+      const { error } = await supabase.functions.invoke('delete-user', {
+        body: { userId: deletingItem.id }
+      });
+
       if (error) {
         toast({
           variant: "destructive",
@@ -185,7 +186,6 @@ const DatabaseManagement = () => {
             <TabsTrigger value="fonduri">Fonduri ({fonduri.length})</TabsTrigger>
             <TabsTrigger value="compartimente">Compartimente ({compartimente.length})</TabsTrigger>
             <TabsTrigger value="inventare">Inventare ({inventare.length})</TabsTrigger>
-            <TabsTrigger value="dosare">Dosare ({dosare.length})</TabsTrigger>
             <TabsTrigger value="users">Utilizatori ({users.length})</TabsTrigger>
           </TabsList>
 
@@ -304,54 +304,6 @@ const DatabaseManagement = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="dosare">
-            <Card>
-              <CardHeader>
-                <CardTitle>Dosare</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TableComponent>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nr. Crt</TableHead>
-                      <TableHead>Indicativ</TableHead>
-                      <TableHead>Conținut</TableHead>
-                      <TableHead>Date Extreme</TableHead>
-                      <TableHead>Nr. File</TableHead>
-                      <TableHead className="w-32">Acțiuni</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dosare.slice(0, 50).map((dosar) => (
-                      <TableRow key={dosar.id}>
-                        <TableCell>{dosar.nr_crt}</TableCell>
-                        <TableCell>{dosar.indicativ_nomenclator}</TableCell>
-                        <TableCell className="max-w-md truncate">{dosar.continut}</TableCell>
-                        <TableCell>{dosar.date_extreme}</TableCell>
-                        <TableCell>{dosar.numar_file}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button size="icon" variant="outline" onClick={() => handleEdit(dosar, "dosare")}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="destructive" onClick={() => handleDelete(dosar, "dosare")}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </TableComponent>
-                {dosare.length > 50 && (
-                  <p className="text-sm text-muted-foreground mt-4">
-                    Se afișează primele 50 de dosare din {dosare.length}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="users">
             <Card>
               <CardHeader>
@@ -415,31 +367,6 @@ const DatabaseManagement = () => {
                   <Input
                     value={editFormData.termen_pastrare || ""}
                     onChange={(e) => setEditFormData({ ...editFormData, termen_pastrare: e.target.value })}
-                  />
-                </div>
-              </>
-            ) : currentTable === "dosare" ? (
-              <>
-                <div className="space-y-2">
-                  <Label>Nr. Crt</Label>
-                  <Input
-                    type="number"
-                    value={editFormData.nr_crt || ""}
-                    onChange={(e) => setEditFormData({ ...editFormData, nr_crt: parseInt(e.target.value) || "" })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Indicativ Nomenclator</Label>
-                  <Input
-                    value={editFormData.indicativ_nomenclator || ""}
-                    onChange={(e) => setEditFormData({ ...editFormData, indicativ_nomenclator: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Conținut</Label>
-                  <Input
-                    value={editFormData.continut || ""}
-                    onChange={(e) => setEditFormData({ ...editFormData, continut: e.target.value })}
                   />
                 </div>
               </>
