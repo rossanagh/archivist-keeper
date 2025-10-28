@@ -64,9 +64,15 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   const handleLogout = async () => {
-    // Log the logout event before signing out
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      // Deblocare inventare
+      await supabase
+        .from("inventare")
+        .update({ locked_by: null, locked_at: null })
+        .eq("locked_by", user.id);
+      
+      // Log logout
       await supabase.from("audit_logs").insert({
         user_id: user.id,
         username: username,

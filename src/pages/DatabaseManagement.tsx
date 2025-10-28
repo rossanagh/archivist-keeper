@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Database, Table, Lock, Users, FileText, FolderOpen, Archive } from "lucide-react";
+import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Database, Table, Lock, Users, FileText, FolderOpen, Archive, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
 interface TableInfo {
@@ -16,6 +19,9 @@ const DatabaseManagement = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
   const [tables, setTables] = useState<TableInfo[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<{ id: string; username: string } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -49,7 +55,39 @@ const DatabaseManagement = () => {
 
     setUsername(profile.username);
     await loadTableCounts();
+    await loadUsers();
     setLoading(false);
+  };
+
+  const loadUsers = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, username, created_at")
+      .order("created_at", { ascending: false });
+    setUsers(data || []);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+
+    const { error } = await supabase.auth.admin.deleteUser(deletingUser.id);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Nu s-a putut șterge utilizatorul",
+      });
+    } else {
+      toast({
+        title: "Succes",
+        description: "Utilizator șters cu succes",
+      });
+      setDeleteOpen(false);
+      setDeletingUser(null);
+      loadUsers();
+      loadTableCounts();
+    }
   };
 
   const loadTableCounts = async () => {
@@ -138,7 +176,59 @@ const DatabaseManagement = () => {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Utilizatori</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TableComponent>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Creat la</TableHead>
+                  <TableHead className="w-24">Acțiuni</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell>{new Date(user.created_at).toLocaleDateString("ro-RO")}</TableCell>
+                    <TableCell>
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        onClick={() => {
+                          setDeletingUser({ id: user.id, username: user.username });
+                          setDeleteOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </TableComponent>
+          </CardContent>
+        </Card>
       </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ești sigur?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Utilizatorul "{deletingUser?.username}" va fi șters permanent.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Anulează</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteUser}>Șterge</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };

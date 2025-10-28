@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, ChevronLeft, Download, Upload, Search } from "lucide-react";
+import { Plus, ChevronLeft, Download, Upload, Search, Pencil, Trash2, Home } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -33,9 +34,13 @@ const Dosare = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState<string>("");
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [editingDosar, setEditingDosar] = useState<Dosar | null>(null);
+  const [deletingDosar, setDeletingDosar] = useState<Dosar | null>(null);
   const dosarePerPage = 10;
   const [formData, setFormData] = useState({
     nr_crt: "",
@@ -250,6 +255,74 @@ const Dosare = () => {
         nr_cutie: "",
       });
       setOpen(false);
+      loadDosare();
+    }
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDosar) return;
+
+    const { error } = await supabase
+      .from("dosare")
+      .update({
+        nr_crt: parseInt(formData.nr_crt),
+        indicativ_nomenclator: formData.indicativ_nomenclator,
+        continut: formData.continut,
+        date_extreme: formData.date_extreme,
+        numar_file: parseInt(formData.numar_file),
+        observatii: formData.observatii || null,
+        nr_cutie: formData.nr_cutie ? parseInt(formData.nr_cutie) : null,
+      })
+      .eq("id", editingDosar.id);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Nu s-a putut actualiza dosarul",
+      });
+    } else {
+      toast({
+        title: "Succes",
+        description: "Dosar actualizat cu succes",
+      });
+      setFormData({
+        nr_crt: "",
+        indicativ_nomenclator: "",
+        continut: "",
+        date_extreme: "",
+        numar_file: "",
+        observatii: "",
+        nr_cutie: "",
+      });
+      setEditOpen(false);
+      setEditingDosar(null);
+      loadDosare();
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingDosar) return;
+
+    const { error } = await supabase
+      .from("dosare")
+      .delete()
+      .eq("id", deletingDosar.id);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Nu s-a putut șterge dosarul",
+      });
+    } else {
+      toast({
+        title: "Succes",
+        description: "Dosar șters cu succes",
+      });
+      setDeleteOpen(false);
+      setDeletingDosar(null);
       loadDosare();
     }
   };
@@ -486,19 +559,30 @@ const Dosare = () => {
     <Layout>
       <div className="space-y-6">
         <div>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              unlockInventar();
-              navigate(
-                `/fonduri/${fondId}/compartimente/${compartimentId}/inventare`
-              );
-            }}
-            className="mb-4"
-          >
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Înapoi la Inventare
-          </Button>
+          <div className="flex gap-2 mb-4">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                unlockInventar();
+                navigate(
+                  `/fonduri/${fondId}/compartimente/${compartimentId}/inventare`
+                );
+              }}
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Înapoi la Inventare
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                unlockInventar();
+                navigate("/fonduri");
+              }}
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Fonduri
+            </Button>
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-3xl font-bold">Dosare</h2>
@@ -669,6 +753,7 @@ const Dosare = () => {
                 <TableHead>Nr. File</TableHead>
                 <TableHead>Observații</TableHead>
                 <TableHead>Nr. Cutie</TableHead>
+                {isAdmin && <TableHead className="w-24">Acțiuni</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -681,6 +766,41 @@ const Dosare = () => {
                   <TableCell>{dosar.numar_file}</TableCell>
                   <TableCell>{dosar.observatii || "-"}</TableCell>
                   <TableCell>{dosar.nr_cutie || "-"}</TableCell>
+                  {isAdmin && (
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingDosar(dosar);
+                            setFormData({
+                              nr_crt: dosar.nr_crt.toString(),
+                              indicativ_nomenclator: dosar.indicativ_nomenclator,
+                              continut: dosar.continut,
+                              date_extreme: dosar.date_extreme,
+                              numar_file: dosar.numar_file.toString(),
+                              observatii: dosar.observatii || "",
+                              nr_cutie: dosar.nr_cutie?.toString() || "",
+                            });
+                            setEditOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          onClick={() => {
+                            setDeletingDosar(dosar);
+                            setDeleteOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -733,6 +853,127 @@ const Dosare = () => {
           </div>
         )}
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editează Dosar</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-nr_crt">Nr. Crt *</Label>
+                <Input
+                  id="edit-nr_crt"
+                  type="number"
+                  value={formData.nr_crt}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nr_crt: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-indicativ">Indicativ Nomenclator *</Label>
+                <Input
+                  id="edit-indicativ"
+                  value={formData.indicativ_nomenclator}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      indicativ_nomenclator: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-continut">Conținut *</Label>
+              <Input
+                id="edit-continut"
+                value={formData.continut}
+                onChange={(e) =>
+                  setFormData({ ...formData, continut: e.target.value })
+                }
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-date">Date Extreme *</Label>
+                <Input
+                  id="edit-date"
+                  value={formData.date_extreme}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      date_extreme: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-file">Număr File *</Label>
+                <Input
+                  id="edit-file"
+                  type="number"
+                  value={formData.numar_file}
+                  onChange={(e) =>
+                    setFormData({ ...formData, numar_file: e.target.value })
+                  }
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-observatii">Observații</Label>
+                <Input
+                  id="edit-observatii"
+                  value={formData.observatii}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      observatii: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-cutie">Nr. Cutie</Label>
+                <Input
+                  id="edit-cutie"
+                  type="number"
+                  value={formData.nr_cutie}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nr_cutie: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <Button type="submit" className="w-full">
+              Actualizează
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ești sigur?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Această acțiune nu poate fi anulată. Dosarul nr. {deletingDosar?.nr_crt} va fi șters permanent.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Anulează</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Șterge</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };
