@@ -7,8 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, FolderOpen, ChevronLeft, Search, Pencil, Trash2 } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, FolderOpen, ChevronLeft, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Compartiment {
@@ -23,11 +22,7 @@ const Compartimente = () => {
   const [fondNume, setFondNume] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [open, setOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [nume, setNume] = useState("");
-  const [editingComp, setEditingComp] = useState<Compartiment | null>(null);
-  const [deletingComp, setDeletingComp] = useState<Compartiment | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -123,58 +118,6 @@ const Compartimente = () => {
     }
   };
 
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingComp) return;
-
-    const { error } = await supabase
-      .from("compartimente")
-      .update({ nume })
-      .eq("id", editingComp.id);
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: "Nu s-a putut actualiza compartimentul",
-      });
-    } else {
-      toast({
-        title: "Succes",
-        description: "Compartiment actualizat cu succes",
-      });
-      setNume("");
-      setEditOpen(false);
-      setEditingComp(null);
-      loadCompartimente();
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deletingComp) return;
-
-    const { error } = await supabase
-      .from("compartimente")
-      .delete()
-      .eq("id", deletingComp.id);
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: "Nu s-a putut șterge compartimentul",
-      });
-    } else {
-      toast({
-        title: "Succes",
-        description: "Compartiment șters cu succes",
-      });
-      setDeleteOpen(false);
-      setDeletingComp(null);
-      loadCompartimente();
-    }
-  };
-
   const filteredCompartimente = compartimente.filter((comp) =>
     comp.nume.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -254,48 +197,20 @@ const Compartimente = () => {
           {filteredCompartimente.map((comp) => (
             <Card
               key={comp.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer relative group"
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => navigate(`/fonduri/${fondId}/compartimente/${comp.id}/inventare`)}
             >
-              <div onClick={() => navigate(`/fonduri/${fondId}/compartimente/${comp.id}/inventare`)}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FolderOpen className="h-5 w-5 text-primary" />
-                    {comp.nume}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Creat: {new Date(comp.created_at).toLocaleDateString("ro-RO")}
-                  </p>
-                </CardContent>
-              </div>
-              {isAdmin && (
-                <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingComp(comp);
-                      setNume(comp.nume);
-                      setEditOpen(true);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeletingComp(comp);
-                      setDeleteOpen(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FolderOpen className="h-5 w-5 text-primary" />
+                  {comp.nume}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Creat: {new Date(comp.created_at).toLocaleDateString("ro-RO")}
+                </p>
+              </CardContent>
             </Card>
           ))}
         </div>
@@ -317,44 +232,6 @@ const Compartimente = () => {
           </div>
         )}
       </div>
-
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editează Compartiment</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-nume">Numele Compartimentului</Label>
-              <Input
-                id="edit-nume"
-                value={nume}
-                onChange={(e) => setNume(e.target.value)}
-                placeholder="Introduceți numele compartimentului"
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full">
-              Actualizează
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Ești sigur?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Această acțiune nu poate fi anulată. Compartimentul "{deletingComp?.nume}" va fi șters permanent.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Anulează</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Șterge</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Layout>
   );
 };

@@ -7,8 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, FileText, ChevronLeft, Lock, Search, Pencil, Trash2, Home } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, FileText, ChevronLeft, Lock, Search, Home } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Inventar {
@@ -27,12 +26,8 @@ const Inventare = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState<string>("");
   const [open, setOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [an, setAn] = useState("");
   const [termenPastrare, setTermenPastrare] = useState("");
-  const [editingInv, setEditingInv] = useState<Inventar | null>(null);
-  const [deletingInv, setDeletingInv] = useState<Inventar | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -134,64 +129,7 @@ const Inventare = () => {
     }
   };
 
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingInv) return;
-
-    const { error } = await supabase
-      .from("inventare")
-      .update({
-        an: parseInt(an),
-        termen_pastrare: termenPastrare.toLowerCase() === 'permanent' ? 'permanent' : termenPastrare,
-      })
-      .eq("id", editingInv.id);
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: "Nu s-a putut actualiza inventarul",
-      });
-    } else {
-      toast({
-        title: "Succes",
-        description: "Inventar actualizat cu succes",
-      });
-      setAn("");
-      setTermenPastrare("");
-      setEditOpen(false);
-      setEditingInv(null);
-      loadInventare();
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deletingInv) return;
-
-    const { error } = await supabase
-      .from("inventare")
-      .delete()
-      .eq("id", deletingInv.id);
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: "Nu s-a putut șterge inventarul",
-      });
-    } else {
-      toast({
-        title: "Succes",
-        description: "Inventar șters cu succes",
-      });
-      setDeleteOpen(false);
-      setDeletingInv(null);
-      loadInventare();
-    }
-  };
-
-  const handleInventarClick = async (inventar: Inventar, isEditOrDelete = false) => {
-    if (isEditOrDelete) return;
+  const handleInventarClick = async (inventar: Inventar) => {
     if (!isAdmin) {
       navigate(
         `/fonduri/${fondId}/compartimente/${compartimentId}/inventare/${inventar.id}/dosare`
@@ -333,61 +271,30 @@ const Inventare = () => {
           {filteredInventare.map((inv) => (
             <Card
               key={inv.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer relative group"
+              className="hover:shadow-lg transition-shadow cursor-pointer relative"
+              onClick={() => handleInventarClick(inv)}
             >
-              <div onClick={() => handleInventarClick(inv)}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    Inventar {inv.an}
-                    {inv.locked_by && inv.locked_by !== userId && (
-                      <Lock className="h-4 w-4 text-destructive ml-auto" />
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-sm">
-                    <span className="font-medium">Dosare:</span> {inv.numar_dosare}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Termen păstrare:</span>{" "}
-                    {inv.termen_pastrare === 'permanent' ? 'Permanent' : `${inv.termen_pastrare} ani`}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Creat: {new Date(inv.created_at).toLocaleDateString("ro-RO")}
-                  </p>
-                </CardContent>
-              </div>
-              {isAdmin && (
-                <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingInv(inv);
-                      setAn(inv.an.toString());
-                      setTermenPastrare(inv.termen_pastrare);
-                      setEditOpen(true);
-                      handleInventarClick(inv, true);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeletingInv(inv);
-                      setDeleteOpen(true);
-                      handleInventarClick(inv, true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Inventar {inv.an}
+                  {inv.locked_by && inv.locked_by !== userId && (
+                    <Lock className="h-4 w-4 text-destructive ml-auto" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-sm">
+                  <span className="font-medium">Dosare:</span> {inv.numar_dosare}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Termen păstrare:</span>{" "}
+                  {inv.termen_pastrare === 'permanent' ? 'Permanent' : `${inv.termen_pastrare} ani`}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Creat: {new Date(inv.created_at).toLocaleDateString("ro-RO")}
+                </p>
+              </CardContent>
             </Card>
           ))}
         </div>
@@ -409,59 +316,6 @@ const Inventare = () => {
           </div>
         )}
       </div>
-
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editează Inventar</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-an">An</Label>
-              <Input
-                id="edit-an"
-                type="number"
-                value={an}
-                onChange={(e) => setAn(e.target.value)}
-                placeholder="2024"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-termen">Termen Păstrare</Label>
-              <Input
-                id="edit-termen"
-                type="text"
-                value={termenPastrare}
-                onChange={(e) => setTermenPastrare(e.target.value)}
-                placeholder="10 sau permanent"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Introduceți un număr de ani sau "permanent"
-              </p>
-            </div>
-            <Button type="submit" className="w-full">
-              Actualizează
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Ești sigur?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Această acțiune nu poate fi anulată. Inventarul din anul {deletingInv?.an} va fi șters permanent.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Anulează</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Șterge</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Layout>
   );
 };

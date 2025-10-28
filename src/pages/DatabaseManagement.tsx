@@ -5,23 +5,32 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Database, Table, Lock, Users, FileText, FolderOpen, Archive, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Database, Trash2, Pencil, Home } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-
-interface TableInfo {
-  name: string;
-  count: number;
-  icon: React.ReactNode;
-}
 
 const DatabaseManagement = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
-  const [tables, setTables] = useState<TableInfo[]>([]);
+  
+  const [fonduri, setFonduri] = useState<any[]>([]);
+  const [compartimente, setCompartimente] = useState<any[]>([]);
+  const [inventare, setInventare] = useState<any[]>([]);
+  const [dosare, setDosare] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  
+  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deletingUser, setDeletingUser] = useState<{ id: string; username: string } | null>(null);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [deletingItem, setDeletingItem] = useState<any>(null);
+  const [currentTable, setCurrentTable] = useState("");
+  
+  const [editFormData, setEditFormData] = useState<any>({});
+  
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -54,63 +63,92 @@ const DatabaseManagement = () => {
     }
 
     setUsername(profile.username);
-    await loadTableCounts();
-    await loadUsers();
+    await loadAllData();
     setLoading(false);
   };
 
-  const loadUsers = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, username, created_at")
-      .order("created_at", { ascending: false });
-    setUsers(data || []);
+  const loadAllData = async () => {
+    const { data: fonduriData } = await supabase.from("fonduri").select("*").order("created_at", { ascending: false });
+    const { data: compartimenteData } = await supabase.from("compartimente").select("*").order("created_at", { ascending: false });
+    const { data: inventareData } = await supabase.from("inventare").select("*").order("created_at", { ascending: false });
+    const { data: dosareData } = await supabase.from("dosare").select("*").order("created_at", { ascending: false });
+    const { data: usersData } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+    
+    setFonduri(fonduriData || []);
+    setCompartimente(compartimenteData || []);
+    setInventare(inventareData || []);
+    setDosare(dosareData || []);
+    setUsers(usersData || []);
   };
 
-  const handleDeleteUser = async () => {
-    if (!deletingUser) return;
+  const handleEdit = (item: any, table: string) => {
+    setEditingItem(item);
+    setCurrentTable(table);
+    setEditFormData(item);
+    setEditOpen(true);
+  };
 
-    const { error } = await supabase.auth.admin.deleteUser(deletingUser.id);
+  const handleDelete = (item: any, table: string) => {
+    setDeletingItem(item);
+    setCurrentTable(table);
+    setDeleteOpen(true);
+  };
+
+  const saveEdit = async () => {
+    const { error } = await supabase
+      .from(currentTable as any)
+      .update(editFormData)
+      .eq("id", editingItem.id);
 
     if (error) {
       toast({
         variant: "destructive",
         title: "Eroare",
-        description: "Nu s-a putut șterge utilizatorul",
+        description: "Nu s-a putut actualiza înregistrarea",
       });
     } else {
       toast({
         title: "Succes",
-        description: "Utilizator șters cu succes",
+        description: "Înregistrare actualizată cu succes",
       });
-      setDeleteOpen(false);
-      setDeletingUser(null);
-      loadUsers();
-      loadTableCounts();
+      setEditOpen(false);
+      loadAllData();
     }
   };
 
-  const loadTableCounts = async () => {
-    const tableNames = [
-      { name: "fonduri", icon: <Archive className="h-5 w-5 text-primary" /> },
-      { name: "compartimente", icon: <FolderOpen className="h-5 w-5 text-primary" /> },
-      { name: "inventare", icon: <FileText className="h-5 w-5 text-primary" /> },
-      { name: "dosare", icon: <Table className="h-5 w-5 text-primary" /> },
-      { name: "profiles", icon: <Users className="h-5 w-5 text-primary" /> },
-      { name: "user_roles", icon: <Lock className="h-5 w-5 text-primary" /> },
-      { name: "audit_logs", icon: <Database className="h-5 w-5 text-primary" /> },
-    ];
+  const confirmDelete = async () => {
+    if (currentTable === "profiles") {
+      const { error } = await supabase.auth.admin.deleteUser(deletingItem.id);
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Eroare",
+          description: "Nu s-a putut șterge utilizatorul",
+        });
+        return;
+      }
+    } else {
+      const { error } = await supabase
+        .from(currentTable as any)
+        .delete()
+        .eq("id", deletingItem.id);
 
-    const counts: TableInfo[] = [];
-    
-    for (const table of tableNames) {
-      const { count } = await supabase
-        .from(table.name as any)
-        .select("*", { count: "exact", head: true });
-      counts.push({ name: table.name, count: count || 0, icon: table.icon });
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Eroare",
+          description: "Nu s-a putut șterge înregistrarea",
+        });
+        return;
+      }
     }
 
-    setTables(counts);
+    toast({
+      title: "Succes",
+      description: "Înregistrare ștearsă cu succes",
+    });
+    setDeleteOpen(false);
+    loadAllData();
   };
 
   if (loading) {
@@ -126,106 +164,304 @@ const DatabaseManagement = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold flex items-center gap-2">
-            <Database className="h-8 w-8 text-primary" />
-            Gestionare Bază de Date
-          </h2>
-          <p className="text-muted-foreground mt-2">
-            Acces: {username} | Informații despre structura bazei de date
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold flex items-center gap-2">
+              <Database className="h-8 w-8 text-primary" />
+              Gestionare Bază de Date
+            </h2>
+            <p className="text-muted-foreground mt-2">
+              Acces: {username} | Editare și ștergere date
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => navigate("/fonduri")}>
+            <Home className="h-4 w-4 mr-2" />
+            Înapoi la Fonduri
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tables.map((table) => (
-            <Card key={table.name} className="hover:shadow-lg transition-shadow">
+        <Tabs defaultValue="fonduri" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="fonduri">Fonduri ({fonduri.length})</TabsTrigger>
+            <TabsTrigger value="compartimente">Compartimente ({compartimente.length})</TabsTrigger>
+            <TabsTrigger value="inventare">Inventare ({inventare.length})</TabsTrigger>
+            <TabsTrigger value="dosare">Dosare ({dosare.length})</TabsTrigger>
+            <TabsTrigger value="users">Utilizatori ({users.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="fonduri">
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 capitalize">
-                  {table.icon}
-                  {table.name}
-                </CardTitle>
+                <CardTitle>Fonduri</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-primary">{table.count}</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {table.count === 1 ? "înregistrare" : "înregistrări"}
-                </p>
+                <TableComponent>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nume</TableHead>
+                      <TableHead>Creat la</TableHead>
+                      <TableHead className="w-32">Acțiuni</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fonduri.map((fond) => (
+                      <TableRow key={fond.id}>
+                        <TableCell>{fond.nume}</TableCell>
+                        <TableCell>{new Date(fond.created_at).toLocaleDateString("ro-RO")}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button size="icon" variant="outline" onClick={() => handleEdit(fond, "fonduri")}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="destructive" onClick={() => handleDelete(fond, "fonduri")}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </TableComponent>
               </CardContent>
             </Card>
-          ))}
-        </div>
+          </TabsContent>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Informații Sistem</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between py-2 border-b">
-              <span className="font-medium">Total înregistrări:</span>
-              <span className="text-primary font-bold">
-                {tables.reduce((acc, table) => acc + table.count, 0)}
-              </span>
-            </div>
-            <div className="flex justify-between py-2 border-b">
-              <span className="font-medium">Tabele active:</span>
-              <span className="text-primary font-bold">{tables.length}</span>
-            </div>
-            <div className="flex justify-between py-2">
-              <span className="font-medium">Versiune:</span>
-              <span className="text-muted-foreground">v1.0</span>
-            </div>
-          </CardContent>
-        </Card>
+          <TabsContent value="compartimente">
+            <Card>
+              <CardHeader>
+                <CardTitle>Compartimente</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TableComponent>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nume</TableHead>
+                      <TableHead>Creat la</TableHead>
+                      <TableHead className="w-32">Acțiuni</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {compartimente.map((comp) => (
+                      <TableRow key={comp.id}>
+                        <TableCell>{comp.nume}</TableCell>
+                        <TableCell>{new Date(comp.created_at).toLocaleDateString("ro-RO")}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button size="icon" variant="outline" onClick={() => handleEdit(comp, "compartimente")}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="destructive" onClick={() => handleDelete(comp, "compartimente")}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </TableComponent>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Utilizatori</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TableComponent>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Creat la</TableHead>
-                  <TableHead className="w-24">Acțiuni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.username}</TableCell>
-                    <TableCell>{new Date(user.created_at).toLocaleDateString("ro-RO")}</TableCell>
-                    <TableCell>
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        onClick={() => {
-                          setDeletingUser({ id: user.id, username: user.username });
-                          setDeleteOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </TableComponent>
-          </CardContent>
-        </Card>
+          <TabsContent value="inventare">
+            <Card>
+              <CardHeader>
+                <CardTitle>Inventare</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TableComponent>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>An</TableHead>
+                      <TableHead>Termen Păstrare</TableHead>
+                      <TableHead>Nr. Dosare</TableHead>
+                      <TableHead>Creat la</TableHead>
+                      <TableHead className="w-32">Acțiuni</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {inventare.map((inv) => (
+                      <TableRow key={inv.id}>
+                        <TableCell>{inv.an}</TableCell>
+                        <TableCell>{inv.termen_pastrare === 'permanent' ? 'Permanent' : `${inv.termen_pastrare} ani`}</TableCell>
+                        <TableCell>{inv.numar_dosare}</TableCell>
+                        <TableCell>{new Date(inv.created_at).toLocaleDateString("ro-RO")}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button size="icon" variant="outline" onClick={() => handleEdit(inv, "inventare")}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="destructive" onClick={() => handleDelete(inv, "inventare")}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </TableComponent>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="dosare">
+            <Card>
+              <CardHeader>
+                <CardTitle>Dosare</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TableComponent>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nr. Crt</TableHead>
+                      <TableHead>Indicativ</TableHead>
+                      <TableHead>Conținut</TableHead>
+                      <TableHead>Date Extreme</TableHead>
+                      <TableHead>Nr. File</TableHead>
+                      <TableHead className="w-32">Acțiuni</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dosare.slice(0, 50).map((dosar) => (
+                      <TableRow key={dosar.id}>
+                        <TableCell>{dosar.nr_crt}</TableCell>
+                        <TableCell>{dosar.indicativ_nomenclator}</TableCell>
+                        <TableCell className="max-w-md truncate">{dosar.continut}</TableCell>
+                        <TableCell>{dosar.date_extreme}</TableCell>
+                        <TableCell>{dosar.numar_file}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button size="icon" variant="outline" onClick={() => handleEdit(dosar, "dosare")}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="destructive" onClick={() => handleDelete(dosar, "dosare")}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </TableComponent>
+                {dosare.length > 50 && (
+                  <p className="text-sm text-muted-foreground mt-4">
+                    Se afișează primele 50 de dosare din {dosare.length}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="users">
+            <Card>
+              <CardHeader>
+                <CardTitle>Utilizatori</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TableComponent>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Creat la</TableHead>
+                      <TableHead className="w-32">Acțiuni</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>{user.username}</TableCell>
+                        <TableCell>{new Date(user.created_at).toLocaleDateString("ro-RO")}</TableCell>
+                        <TableCell>
+                          <Button size="icon" variant="destructive" onClick={() => handleDelete(user, "profiles")}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </TableComponent>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editează înregistrare</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {currentTable === "fonduri" || currentTable === "compartimente" ? (
+              <div className="space-y-2">
+                <Label>Nume</Label>
+                <Input
+                  value={editFormData.nume || ""}
+                  onChange={(e) => setEditFormData({ ...editFormData, nume: e.target.value })}
+                />
+              </div>
+            ) : currentTable === "inventare" ? (
+              <>
+                <div className="space-y-2">
+                  <Label>An</Label>
+                  <Input
+                    type="number"
+                    value={editFormData.an || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, an: parseInt(e.target.value) || "" })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Termen Păstrare</Label>
+                  <Input
+                    value={editFormData.termen_pastrare || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, termen_pastrare: e.target.value })}
+                  />
+                </div>
+              </>
+            ) : currentTable === "dosare" ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Nr. Crt</Label>
+                  <Input
+                    type="number"
+                    value={editFormData.nr_crt || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, nr_crt: parseInt(e.target.value) || "" })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Indicativ Nomenclator</Label>
+                  <Input
+                    value={editFormData.indicativ_nomenclator || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, indicativ_nomenclator: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Conținut</Label>
+                  <Input
+                    value={editFormData.continut || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, continut: e.target.value })}
+                  />
+                </div>
+              </>
+            ) : null}
+            <Button onClick={saveEdit} className="w-full">
+              Salvează
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Ești sigur?</AlertDialogTitle>
             <AlertDialogDescription>
-              Utilizatorul "{deletingUser?.username}" va fi șters permanent.
+              Această acțiune nu poate fi anulată. Înregistrarea va fi ștearsă permanent.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Anulează</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteUser}>Șterge</AlertDialogAction>
+            <AlertDialogAction onClick={confirmDelete}>Șterge</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
