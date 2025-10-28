@@ -64,51 +64,36 @@ const CreateAdmin = () => {
 
     try {
       // Validate input
-      const validated = authSchema.parse({ username, password });
-      // Check if username already exists
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("username")
-        .eq("username", username)
-        .maybeSingle();
+      authSchema.parse({ username, password });
 
-      if (existingProfile) {
-        throw new Error("Acest username există deja");
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Nu sunteți autentificat");
       }
 
-      // Create auth user
-      const email = `${username}@inventory.local`;
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username: username,
-          },
+      // Call the edge function to create admin
+      const { data, error } = await supabase.functions.invoke('create-admin', {
+        body: { username, password },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
-      if (authError) throw authError;
+      if (error) throw error;
 
-      if (authData.user) {
-        // Add admin role
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({
-            user_id: authData.user.id,
-            role: "admin",
-          });
-
-        if (roleError) throw roleError;
-
-        toast({
-          title: "Admin creat cu succes",
-          description: `Utilizatorul ${username} a fost adăugat ca administrator.`,
-        });
-
-        setUsername("");
-        setPassword("");
+      if (data.error) {
+        throw new Error(data.error);
       }
+
+      toast({
+        title: "Admin creat cu succes",
+        description: data.message || `Utilizatorul ${username} a fost adăugat ca administrator.`,
+      });
+
+      setUsername("");
+      setPassword("");
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast({
