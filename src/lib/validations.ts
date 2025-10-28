@@ -25,16 +25,20 @@ export const compartimentSchema = z.object({
     .max(200, 'Numele compartimentului trebuie să aibă maxim 200 de caractere')
 });
 
-// Inventar validation
+// Inventar validation schema
 export const inventarSchema = z.object({
   an: z.number()
-    .int('Anul trebuie să fie un număr întreg')
-    .min(1900, 'Anul trebuie să fie după 1900')
-    .max(2100, 'Anul trebuie să fie înainte de 2100'),
-  termen_pastrare: z.number()
-    .int('Termenul de păstrare trebuie să fie un număr întreg')
-    .min(1, 'Termenul de păstrare trebuie să fie pozitiv')
-    .max(999, 'Termenul de păstrare trebuie să fie maxim 999 ani')
+    .min(1900, "Anul trebuie să fie mai mare decât 1900")
+    .max(new Date().getFullYear() + 10, "Anul nu poate fi mai mare cu 10 ani decât anul curent"),
+  termen_pastrare: z.union([
+    z.string().refine((val) => val.toLowerCase() === 'permanent', {
+      message: "Trebuie să fie 'permanent' sau un număr"
+    }),
+    z.string().regex(/^\d+$/, "Trebuie să fie un număr valid").transform(Number)
+      .refine((val) => val >= 1 && val <= 999, {
+        message: "Termenul de păstrare trebuie să fie între 1 și 999 ani"
+      })
+  ])
 });
 
 // Dosar validation

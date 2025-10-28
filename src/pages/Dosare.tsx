@@ -27,7 +27,7 @@ const Dosare = () => {
   const { fondId, compartimentId, inventarId } = useParams();
   const [dosare, setDosare] = useState<Dosar[]>([]);
   const [inventarAn, setInventarAn] = useState<number>(0);
-  const [inventarTermen, setInventarTermen] = useState<number>(0);
+  const [inventarTermen, setInventarTermen] = useState<string>("");
   const [fondNume, setFondNume] = useState<string>("");
   const [compartimentNume, setCompartimentNume] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);

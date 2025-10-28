@@ -14,7 +14,7 @@ interface Inventar {
   id: string;
   an: number;
   numar_dosare: number;
-  termen_pastrare: number;
+  termen_pastrare: string;
   locked_by: string | null;
   created_at: string;
 }
@@ -106,7 +106,7 @@ const Inventare = () => {
     const { error } = await supabase.from("inventare").insert([
       {
         an: parseInt(an),
-        termen_pastrare: parseInt(termenPastrare),
+        termen_pastrare: termenPastrare.toLowerCase() === 'permanent' ? 'permanent' : termenPastrare,
         compartiment_id: compartimentId,
       },
     ]);
@@ -225,15 +225,18 @@ const Inventare = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="termen">Termen Păstrare (ani)</Label>
+                      <Label htmlFor="termen">Termen Păstrare</Label>
                       <Input
                         id="termen"
-                        type="number"
+                        type="text"
                         value={termenPastrare}
                         onChange={(e) => setTermenPastrare(e.target.value)}
-                        placeholder="10"
+                        placeholder="10 sau permanent"
                         required
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Introduceți un număr de ani sau "permanent"
+                      </p>
                     </div>
                     <Button type="submit" className="w-full">
                       Adaugă
@@ -278,7 +281,7 @@ const Inventare = () => {
                 </p>
                 <p className="text-sm">
                   <span className="font-medium">Termen păstrare:</span>{" "}
-                  {inv.termen_pastrare} ani
+                  {inv.termen_pastrare === 'permanent' ? 'Permanent' : `${inv.termen_pastrare} ani`}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Creat: {new Date(inv.created_at).toLocaleDateString("ro-RO")}

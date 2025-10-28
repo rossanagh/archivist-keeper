@@ -11,6 +11,7 @@ import Dosare from "./pages/Dosare";
 import Istoric from "./pages/Istoric";
 import CreateAdmin from "./pages/CreateAdmin";
 import PasswordManagement from "./pages/PasswordManagement";
+import DatabaseManagement from "./pages/DatabaseManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/istoric" element={<Istoric />} />
           <Route path="/create-admin" element={<CreateAdmin />} />
           <Route path="/password-management" element={<PasswordManagement />} />
+          <Route path="/database-management" element={<DatabaseManagement />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

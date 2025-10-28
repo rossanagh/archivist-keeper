@@ -160,7 +160,7 @@ export type Database = {
           locked_at: string | null
           locked_by: string | null
           numar_dosare: number
-          termen_pastrare: number
+          termen_pastrare: string
         }
         Insert: {
           an: number
@@ -171,7 +171,7 @@ export type Database = {
           locked_at?: string | null
           locked_by?: string | null
           numar_dosare?: number
-          termen_pastrare: number
+          termen_pastrare: string
         }
         Update: {
           an?: number
@@ -182,7 +182,7 @@ export type Database = {
           locked_at?: string | null
           locked_by?: string | null
           numar_dosare?: number
-          termen_pastrare?: number
+          termen_pastrare?: string
         }
         Relationships: [
           {
