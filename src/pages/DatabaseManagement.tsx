@@ -20,7 +20,6 @@ const DatabaseManagement = () => {
   const [fonduri, setFonduri] = useState<any[]>([]);
   const [compartimente, setCompartimente] = useState<any[]>([]);
   const [inventare, setInventare] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
   
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -70,12 +69,10 @@ const DatabaseManagement = () => {
     const { data: fonduriData } = await supabase.from("fonduri").select("*").order("created_at", { ascending: false });
     const { data: compartimenteData } = await supabase.from("compartimente").select("*").order("created_at", { ascending: false });
     const { data: inventareData } = await supabase.from("inventare").select("*").order("created_at", { ascending: false });
-    const { data: usersData } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
     
     setFonduri(fonduriData || []);
     setCompartimente(compartimenteData || []);
     setInventare(inventareData || []);
-    setUsers(usersData || []);
   };
 
   const handleEdit = (item: any, table: string) => {
@@ -114,34 +111,18 @@ const DatabaseManagement = () => {
   };
 
   const confirmDelete = async () => {
-    if (currentTable === "profiles") {
-      // Call edge function to delete user
-      const { error } = await supabase.functions.invoke('delete-user', {
-        body: { userId: deletingItem.id }
+    const { error } = await supabase
+      .from(currentTable as any)
+      .delete()
+      .eq("id", deletingItem.id);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Nu s-a putut șterge înregistrarea",
       });
-
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Eroare",
-          description: "Nu s-a putut șterge utilizatorul",
-        });
-        return;
-      }
-    } else {
-      const { error } = await supabase
-        .from(currentTable as any)
-        .delete()
-        .eq("id", deletingItem.id);
-
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Eroare",
-          description: "Nu s-a putut șterge înregistrarea",
-        });
-        return;
-      }
+      return;
     }
 
     toast({
@@ -186,7 +167,6 @@ const DatabaseManagement = () => {
             <TabsTrigger value="fonduri">Fonduri ({fonduri.length})</TabsTrigger>
             <TabsTrigger value="compartimente">Compartimente ({compartimente.length})</TabsTrigger>
             <TabsTrigger value="inventare">Inventare ({inventare.length})</TabsTrigger>
-            <TabsTrigger value="users">Utilizatori ({users.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="fonduri">
@@ -295,38 +275,6 @@ const DatabaseManagement = () => {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </TableComponent>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="users">
-            <Card>
-              <CardHeader>
-                <CardTitle>Utilizatori</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TableComponent>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Username</TableHead>
-                      <TableHead>Creat la</TableHead>
-                      <TableHead className="w-32">Acțiuni</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>{user.username}</TableCell>
-                        <TableCell>{new Date(user.created_at).toLocaleDateString("ro-RO")}</TableCell>
-                        <TableCell>
-                          <Button size="icon" variant="destructive" onClick={() => handleDelete(user, "profiles")}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
