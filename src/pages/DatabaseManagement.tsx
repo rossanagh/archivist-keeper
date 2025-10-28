@@ -8,7 +8,7 @@ import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Database, Trash2, Pencil, Home, ChevronRight, ArrowLeft } from "lucide-react";
+import { Database, Trash2, Pencil, Home, ChevronRight } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
@@ -128,19 +128,6 @@ const DatabaseManagement = () => {
       setSelectedInventar(null);
     } else if (level === 'inventare') {
       setSelectedInventar(null);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentLevel === 'dosare') {
-      setCurrentLevel('inventare');
-      setSelectedInventar(null);
-    } else if (currentLevel === 'inventare') {
-      setCurrentLevel('compartimente');
-      setSelectedCompartiment(null);
-    } else if (currentLevel === 'compartimente') {
-      setCurrentLevel('fonduri');
-      setSelectedFond(null);
     }
   };
 
@@ -327,18 +314,10 @@ const DatabaseManagement = () => {
               Acces: {username} | Editare și ștergere date
             </p>
           </div>
-          <div className="flex gap-2">
-            {currentLevel !== 'fonduri' && (
-              <Button variant="outline" onClick={handleBack}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Înapoi
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => navigate("/fonduri")}>
-              <Home className="h-4 w-4 mr-2" />
-              Înapoi la Fonduri
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => navigate("/fonduri")}>
+            <Home className="h-4 w-4 mr-2" />
+            Înapoi la Fonduri
+          </Button>
         </div>
 
         <Breadcrumb>
