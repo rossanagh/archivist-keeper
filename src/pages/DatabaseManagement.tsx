@@ -14,13 +14,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 
 type ViewLevel = 'fonduri' | 'compartimente' | 'inventare' | 'dosare';
-type ViewMode = 'fonduri-hierarchy' | 'users';
 
 const DatabaseManagement = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
   
-  const [viewMode, setViewMode] = useState<ViewMode>('fonduri-hierarchy');
   const [currentLevel, setCurrentLevel] = useState<ViewLevel>('fonduri');
   const [selectedFond, setSelectedFond] = useState<any>(null);
   const [selectedCompartiment, setSelectedCompartiment] = useState<any>(null);
@@ -72,10 +70,7 @@ const DatabaseManagement = () => {
   };
 
   const loadData = async () => {
-    if (viewMode === 'users') {
-      const { data: usersData } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
-      setData(usersData || []);
-    } else if (currentLevel === 'fonduri') {
+    if (currentLevel === 'fonduri') {
       const { data: fonduriData } = await supabase.from("fonduri").select("*").order("created_at", { ascending: false });
       setData(fonduriData || []);
     } else if (currentLevel === 'compartimente' && selectedFond) {
@@ -94,11 +89,9 @@ const DatabaseManagement = () => {
     if (!loading) {
       loadData();
     }
-  }, [viewMode, currentLevel, selectedFond, selectedCompartiment, selectedInventar]);
+  }, [currentLevel, selectedFond, selectedCompartiment, selectedInventar]);
 
   const handleRowDoubleClick = (item: any) => {
-    if (viewMode === 'users') return; // No drill-down for users
-    
     if (currentLevel === 'fonduri') {
       setSelectedFond(item);
       setCurrentLevel('compartimente');
@@ -152,9 +145,8 @@ const DatabaseManagement = () => {
   };
 
   const saveEdit = async () => {
-    const tableName = viewMode === 'users' ? 'profiles' : currentLevel;
     const { error } = await supabase
-      .from(tableName as any)
+      .from(currentLevel as any)
       .update(editFormData)
       .eq("id", editingItem.id);
 
@@ -175,33 +167,18 @@ const DatabaseManagement = () => {
   };
 
   const confirmDelete = async () => {
-    if (viewMode === 'users') {
-      const { error } = await supabase.functions.invoke('delete-user', {
-        body: { userId: deletingItem.id }
+    const { error } = await supabase
+      .from(currentLevel as any)
+      .delete()
+      .eq("id", deletingItem.id);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Nu s-a putut șterge înregistrarea",
       });
-
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Eroare",
-          description: "Nu s-a putut șterge utilizatorul",
-        });
-        return;
-      }
-    } else {
-      const { error } = await supabase
-        .from(currentLevel as any)
-        .delete()
-        .eq("id", deletingItem.id);
-
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Eroare",
-          description: "Nu s-a putut șterge înregistrarea",
-        });
-        return;
-      }
+      return;
     }
 
     toast({
@@ -223,8 +200,6 @@ const DatabaseManagement = () => {
   }
 
   const getTableTitle = () => {
-    if (viewMode === 'users') return "Utilizatori";
-    
     const titles = {
       fonduri: "Fonduri",
       compartimente: `Compartimente - ${selectedFond?.nume}`,
@@ -235,15 +210,7 @@ const DatabaseManagement = () => {
   };
 
   const renderTableHeaders = () => {
-    if (viewMode === 'users') {
-      return (
-        <>
-          <TableHead>Username</TableHead>
-          <TableHead>Creat la</TableHead>
-          <TableHead className="w-32">Acțiuni</TableHead>
-        </>
-      );
-    } else if (currentLevel === 'fonduri' || currentLevel === 'compartimente') {
+    if (currentLevel === 'fonduri' || currentLevel === 'compartimente') {
       return (
         <>
           <TableHead>Nume</TableHead>
@@ -278,19 +245,7 @@ const DatabaseManagement = () => {
   };
 
   const renderTableRow = (item: any) => {
-    if (viewMode === 'users') {
-      return (
-        <TableRow key={item.id}>
-          <TableCell>{item.username}</TableCell>
-          <TableCell>{new Date(item.created_at).toLocaleDateString("ro-RO")}</TableCell>
-          <TableCell>
-            <Button size="icon" variant="destructive" onClick={(e) => handleDelete(item, e)}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </TableCell>
-        </TableRow>
-      );
-    } else if (currentLevel === 'fonduri' || currentLevel === 'compartimente') {
+    if (currentLevel === 'fonduri' || currentLevel === 'compartimente') {
       return (
         <TableRow 
           key={item.id} 
@@ -373,7 +328,7 @@ const DatabaseManagement = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            {viewMode === 'fonduri-hierarchy' && currentLevel !== 'fonduri' && (
+            {currentLevel !== 'fonduri' && (
               <Button variant="outline" onClick={handleBack}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Înapoi
@@ -386,29 +341,7 @@ const DatabaseManagement = () => {
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button 
-            variant={viewMode === 'fonduri-hierarchy' ? 'default' : 'outline'}
-            onClick={() => {
-              setViewMode('fonduri-hierarchy');
-              setCurrentLevel('fonduri');
-              setSelectedFond(null);
-              setSelectedCompartiment(null);
-              setSelectedInventar(null);
-            }}
-          >
-            Fonduri
-          </Button>
-          <Button 
-            variant={viewMode === 'users' ? 'default' : 'outline'}
-            onClick={() => setViewMode('users')}
-          >
-            Utilizatori
-          </Button>
-        </div>
-
-        {viewMode === 'fonduri-hierarchy' && (
-          <Breadcrumb>
+        <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink onClick={() => navigateToBreadcrumb('fonduri')} className="cursor-pointer">
@@ -459,7 +392,6 @@ const DatabaseManagement = () => {
             )}
           </BreadcrumbList>
         </Breadcrumb>
-        )}
 
         <Card>
           <CardHeader>

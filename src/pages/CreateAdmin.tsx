@@ -31,21 +31,7 @@ const CreateAdmin = () => {
         navigate('/');
         return;
       }
-
-      // Check if user is ghitaoarga
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("username")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profile?.username === "ghitaoarga") {
-        setIsAdmin(true);
-        setCheckingAuth(false);
-        return;
-      }
       
-      // Otherwise check user_roles table
       const { data } = await supabase
         .from('user_roles')
         .select('role')
