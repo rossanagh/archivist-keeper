@@ -5,27 +5,31 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Database, Trash2, Pencil, Home } from "lucide-react";
+import { Database, Trash2, Pencil, Home, ChevronRight } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+
+type ViewLevel = 'fonduri' | 'compartimente' | 'inventare' | 'dosare';
 
 const DatabaseManagement = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
   
-  const [fonduri, setFonduri] = useState<any[]>([]);
-  const [compartimente, setCompartimente] = useState<any[]>([]);
-  const [inventare, setInventare] = useState<any[]>([]);
+  const [currentLevel, setCurrentLevel] = useState<ViewLevel>('fonduri');
+  const [selectedFond, setSelectedFond] = useState<any>(null);
+  const [selectedCompartiment, setSelectedCompartiment] = useState<any>(null);
+  const [selectedInventar, setSelectedInventar] = useState<any>(null);
+  
+  const [data, setData] = useState<any[]>([]);
   
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [deletingItem, setDeletingItem] = useState<any>(null);
-  const [currentTable, setCurrentTable] = useState("");
   
   const [editFormData, setEditFormData] = useState<any>({});
   
@@ -61,36 +65,75 @@ const DatabaseManagement = () => {
     }
 
     setUsername(profile.username);
-    await loadAllData();
+    await loadData();
     setLoading(false);
   };
 
-  const loadAllData = async () => {
-    const { data: fonduriData } = await supabase.from("fonduri").select("*").order("created_at", { ascending: false });
-    const { data: compartimenteData } = await supabase.from("compartimente").select("*").order("created_at", { ascending: false });
-    const { data: inventareData } = await supabase.from("inventare").select("*").order("created_at", { ascending: false });
-    
-    setFonduri(fonduriData || []);
-    setCompartimente(compartimenteData || []);
-    setInventare(inventareData || []);
+  const loadData = async () => {
+    if (currentLevel === 'fonduri') {
+      const { data: fonduriData } = await supabase.from("fonduri").select("*").order("created_at", { ascending: false });
+      setData(fonduriData || []);
+    } else if (currentLevel === 'compartimente' && selectedFond) {
+      const { data: compartimenteData } = await supabase.from("compartimente").select("*").eq("fond_id", selectedFond.id).order("created_at", { ascending: false });
+      setData(compartimenteData || []);
+    } else if (currentLevel === 'inventare' && selectedCompartiment) {
+      const { data: inventareData } = await supabase.from("inventare").select("*").eq("compartiment_id", selectedCompartiment.id).order("created_at", { ascending: false });
+      setData(inventareData || []);
+    } else if (currentLevel === 'dosare' && selectedInventar) {
+      const { data: dosareData } = await supabase.from("dosare").select("*").eq("inventar_id", selectedInventar.id).order("nr_crt", { ascending: true });
+      setData(dosareData || []);
+    }
   };
 
-  const handleEdit = (item: any, table: string) => {
+  useEffect(() => {
+    if (!loading) {
+      loadData();
+    }
+  }, [currentLevel, selectedFond, selectedCompartiment, selectedInventar]);
+
+  const handleRowDoubleClick = (item: any) => {
+    if (currentLevel === 'fonduri') {
+      setSelectedFond(item);
+      setCurrentLevel('compartimente');
+    } else if (currentLevel === 'compartimente') {
+      setSelectedCompartiment(item);
+      setCurrentLevel('inventare');
+    } else if (currentLevel === 'inventare') {
+      setSelectedInventar(item);
+      setCurrentLevel('dosare');
+    }
+  };
+
+  const handleEdit = (item: any, e: React.MouseEvent) => {
+    e.stopPropagation();
     setEditingItem(item);
-    setCurrentTable(table);
     setEditFormData(item);
     setEditOpen(true);
   };
 
-  const handleDelete = (item: any, table: string) => {
+  const handleDelete = (item: any, e: React.MouseEvent) => {
+    e.stopPropagation();
     setDeletingItem(item);
-    setCurrentTable(table);
     setDeleteOpen(true);
+  };
+
+  const navigateToBreadcrumb = (level: ViewLevel) => {
+    setCurrentLevel(level);
+    if (level === 'fonduri') {
+      setSelectedFond(null);
+      setSelectedCompartiment(null);
+      setSelectedInventar(null);
+    } else if (level === 'compartimente') {
+      setSelectedCompartiment(null);
+      setSelectedInventar(null);
+    } else if (level === 'inventare') {
+      setSelectedInventar(null);
+    }
   };
 
   const saveEdit = async () => {
     const { error } = await supabase
-      .from(currentTable as any)
+      .from(currentLevel as any)
       .update(editFormData)
       .eq("id", editingItem.id);
 
@@ -106,13 +149,13 @@ const DatabaseManagement = () => {
         description: "Înregistrare actualizată cu succes",
       });
       setEditOpen(false);
-      loadAllData();
+      loadData();
     }
   };
 
   const confirmDelete = async () => {
     const { error } = await supabase
-      .from(currentTable as any)
+      .from(currentLevel as any)
       .delete()
       .eq("id", deletingItem.id);
 
@@ -130,7 +173,7 @@ const DatabaseManagement = () => {
       description: "Înregistrare ștearsă cu succes",
     });
     setDeleteOpen(false);
-    loadAllData();
+    loadData();
   };
 
   if (loading) {
@@ -142,6 +185,121 @@ const DatabaseManagement = () => {
       </Layout>
     );
   }
+
+  const getTableTitle = () => {
+    const titles = {
+      fonduri: "Fonduri",
+      compartimente: `Compartimente - ${selectedFond?.nume}`,
+      inventare: `Inventare - ${selectedCompartiment?.nume}`,
+      dosare: `Dosare - Inventar ${selectedInventar?.an}`
+    };
+    return titles[currentLevel];
+  };
+
+  const renderTableHeaders = () => {
+    if (currentLevel === 'fonduri' || currentLevel === 'compartimente') {
+      return (
+        <>
+          <TableHead>Nume</TableHead>
+          <TableHead>Creat la</TableHead>
+          <TableHead className="w-32">Acțiuni</TableHead>
+        </>
+      );
+    } else if (currentLevel === 'inventare') {
+      return (
+        <>
+          <TableHead>An</TableHead>
+          <TableHead>Termen Păstrare</TableHead>
+          <TableHead>Nr. Dosare</TableHead>
+          <TableHead>Creat la</TableHead>
+          <TableHead className="w-32">Acțiuni</TableHead>
+        </>
+      );
+    } else if (currentLevel === 'dosare') {
+      return (
+        <>
+          <TableHead>Nr. Crt</TableHead>
+          <TableHead>Indicativ</TableHead>
+          <TableHead>Conținut</TableHead>
+          <TableHead>Date Extreme</TableHead>
+          <TableHead>Nr. File</TableHead>
+          <TableHead>Nr. Cutie</TableHead>
+          <TableHead>Observații</TableHead>
+          <TableHead className="w-32">Acțiuni</TableHead>
+        </>
+      );
+    }
+  };
+
+  const renderTableRow = (item: any) => {
+    if (currentLevel === 'fonduri' || currentLevel === 'compartimente') {
+      return (
+        <TableRow 
+          key={item.id} 
+          onDoubleClick={() => handleRowDoubleClick(item)}
+          className="cursor-pointer hover:bg-muted/50"
+        >
+          <TableCell>{item.nume}</TableCell>
+          <TableCell>{new Date(item.created_at).toLocaleDateString("ro-RO")}</TableCell>
+          <TableCell>
+            <div className="flex gap-2">
+              <Button size="icon" variant="outline" onClick={(e) => handleEdit(item, e)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="destructive" onClick={(e) => handleDelete(item, e)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </TableCell>
+        </TableRow>
+      );
+    } else if (currentLevel === 'inventare') {
+      return (
+        <TableRow 
+          key={item.id} 
+          onDoubleClick={() => handleRowDoubleClick(item)}
+          className="cursor-pointer hover:bg-muted/50"
+        >
+          <TableCell>{item.an}</TableCell>
+          <TableCell>{item.termen_pastrare === 'permanent' ? 'Permanent' : `${item.termen_pastrare} ani`}</TableCell>
+          <TableCell>{item.numar_dosare}</TableCell>
+          <TableCell>{new Date(item.created_at).toLocaleDateString("ro-RO")}</TableCell>
+          <TableCell>
+            <div className="flex gap-2">
+              <Button size="icon" variant="outline" onClick={(e) => handleEdit(item, e)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="destructive" onClick={(e) => handleDelete(item, e)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </TableCell>
+        </TableRow>
+      );
+    } else if (currentLevel === 'dosare') {
+      return (
+        <TableRow key={item.id}>
+          <TableCell>{item.nr_crt}</TableCell>
+          <TableCell>{item.indicativ_nomenclator}</TableCell>
+          <TableCell>{item.continut}</TableCell>
+          <TableCell>{item.date_extreme}</TableCell>
+          <TableCell>{item.numar_file}</TableCell>
+          <TableCell>{item.nr_cutie || '-'}</TableCell>
+          <TableCell>{item.observatii || '-'}</TableCell>
+          <TableCell>
+            <div className="flex gap-2">
+              <Button size="icon" variant="outline" onClick={(e) => handleEdit(item, e)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="destructive" onClick={(e) => handleDelete(item, e)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </TableCell>
+        </TableRow>
+      );
+    }
+  };
 
   return (
     <Layout>
@@ -162,137 +320,84 @@ const DatabaseManagement = () => {
           </Button>
         </div>
 
-        <Tabs defaultValue="fonduri" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="fonduri">Fonduri ({fonduri.length})</TabsTrigger>
-            <TabsTrigger value="compartimente">Compartimente ({compartimente.length})</TabsTrigger>
-            <TabsTrigger value="inventare">Inventare ({inventare.length})</TabsTrigger>
-          </TabsList>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink onClick={() => navigateToBreadcrumb('fonduri')} className="cursor-pointer">
+                Fonduri
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            {selectedFond && (
+              <>
+                <BreadcrumbSeparator>
+                  <ChevronRight className="h-4 w-4" />
+                </BreadcrumbSeparator>
+                <BreadcrumbItem>
+                  {currentLevel === 'compartimente' ? (
+                    <BreadcrumbPage>{selectedFond.nume}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink onClick={() => navigateToBreadcrumb('compartimente')} className="cursor-pointer">
+                      {selectedFond.nume}
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              </>
+            )}
+            {selectedCompartiment && (
+              <>
+                <BreadcrumbSeparator>
+                  <ChevronRight className="h-4 w-4" />
+                </BreadcrumbSeparator>
+                <BreadcrumbItem>
+                  {currentLevel === 'inventare' ? (
+                    <BreadcrumbPage>{selectedCompartiment.nume}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink onClick={() => navigateToBreadcrumb('inventare')} className="cursor-pointer">
+                      {selectedCompartiment.nume}
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              </>
+            )}
+            {selectedInventar && (
+              <>
+                <BreadcrumbSeparator>
+                  <ChevronRight className="h-4 w-4" />
+                </BreadcrumbSeparator>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Inventar {selectedInventar.an}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </>
+            )}
+          </BreadcrumbList>
+        </Breadcrumb>
 
-          <TabsContent value="fonduri">
-            <Card>
-              <CardHeader>
-                <CardTitle>Fonduri</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TableComponent>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nume</TableHead>
-                      <TableHead>Creat la</TableHead>
-                      <TableHead className="w-32">Acțiuni</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {fonduri.map((fond) => (
-                      <TableRow key={fond.id}>
-                        <TableCell>{fond.nume}</TableCell>
-                        <TableCell>{new Date(fond.created_at).toLocaleDateString("ro-RO")}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button size="icon" variant="outline" onClick={() => handleEdit(fond, "fonduri")}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="destructive" onClick={() => handleDelete(fond, "fonduri")}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </TableComponent>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="compartimente">
-            <Card>
-              <CardHeader>
-                <CardTitle>Compartimente</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TableComponent>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nume</TableHead>
-                      <TableHead>Creat la</TableHead>
-                      <TableHead className="w-32">Acțiuni</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {compartimente.map((comp) => (
-                      <TableRow key={comp.id}>
-                        <TableCell>{comp.nume}</TableCell>
-                        <TableCell>{new Date(comp.created_at).toLocaleDateString("ro-RO")}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button size="icon" variant="outline" onClick={() => handleEdit(comp, "compartimente")}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="destructive" onClick={() => handleDelete(comp, "compartimente")}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </TableComponent>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="inventare">
-            <Card>
-              <CardHeader>
-                <CardTitle>Inventare</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TableComponent>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>An</TableHead>
-                      <TableHead>Termen Păstrare</TableHead>
-                      <TableHead>Nr. Dosare</TableHead>
-                      <TableHead>Creat la</TableHead>
-                      <TableHead className="w-32">Acțiuni</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {inventare.map((inv) => (
-                      <TableRow key={inv.id}>
-                        <TableCell>{inv.an}</TableCell>
-                        <TableCell>{inv.termen_pastrare === 'permanent' ? 'Permanent' : `${inv.termen_pastrare} ani`}</TableCell>
-                        <TableCell>{inv.numar_dosare}</TableCell>
-                        <TableCell>{new Date(inv.created_at).toLocaleDateString("ro-RO")}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button size="icon" variant="outline" onClick={() => handleEdit(inv, "inventare")}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="destructive" onClick={() => handleDelete(inv, "inventare")}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </TableComponent>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <Card>
+          <CardHeader>
+            <CardTitle>{getTableTitle()}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TableComponent>
+              <TableHeader>
+                <TableRow>
+                  {renderTableHeaders()}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.map((item) => renderTableRow(item))}
+              </TableBody>
+            </TableComponent>
+          </CardContent>
+        </Card>
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Editează înregistrare</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {currentTable === "fonduri" || currentTable === "compartimente" ? (
+            {currentLevel === "fonduri" || currentLevel === "compartimente" ? (
               <div className="space-y-2">
                 <Label>Nume</Label>
                 <Input
@@ -300,7 +405,7 @@ const DatabaseManagement = () => {
                   onChange={(e) => setEditFormData({ ...editFormData, nume: e.target.value })}
                 />
               </div>
-            ) : currentTable === "inventare" ? (
+            ) : currentLevel === "inventare" ? (
               <>
                 <div className="space-y-2">
                   <Label>An</Label>
@@ -316,6 +421,67 @@ const DatabaseManagement = () => {
                     value={editFormData.termen_pastrare || ""}
                     onChange={(e) => setEditFormData({ ...editFormData, termen_pastrare: e.target.value })}
                   />
+                </div>
+              </>
+            ) : currentLevel === "dosare" ? (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nr. Crt</Label>
+                    <Input
+                      type="number"
+                      value={editFormData.nr_crt || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, nr_crt: parseInt(e.target.value) || "" })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Indicativ Nomenclator</Label>
+                    <Input
+                      value={editFormData.indicativ_nomenclator || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, indicativ_nomenclator: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Conținut</Label>
+                  <Input
+                    value={editFormData.continut || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, continut: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Date Extreme</Label>
+                    <Input
+                      value={editFormData.date_extreme || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, date_extreme: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nr. File</Label>
+                    <Input
+                      type="number"
+                      value={editFormData.numar_file || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, numar_file: parseInt(e.target.value) || "" })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nr. Cutie</Label>
+                    <Input
+                      type="number"
+                      value={editFormData.nr_cutie || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, nr_cutie: parseInt(e.target.value) || null })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Observații</Label>
+                    <Input
+                      value={editFormData.observatii || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, observatii: e.target.value })}
+                    />
+                  </div>
                 </div>
               </>
             ) : null}
