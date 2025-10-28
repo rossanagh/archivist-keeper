@@ -284,14 +284,9 @@ const DatabaseManagement = () => {
           <TableCell>{item.username}</TableCell>
           <TableCell>{new Date(item.created_at).toLocaleDateString("ro-RO")}</TableCell>
           <TableCell>
-            <div className="flex gap-2">
-              <Button size="icon" variant="outline" onClick={(e) => handleEdit(item, e)}>
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="destructive" onClick={(e) => handleDelete(item, e)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button size="icon" variant="destructive" onClick={(e) => handleDelete(item, e)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </TableCell>
         </TableRow>
       );
@@ -491,15 +486,7 @@ const DatabaseManagement = () => {
             <DialogTitle>Editează înregistrare</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {viewMode === "users" ? (
-              <div className="space-y-2">
-                <Label>Username</Label>
-                <Input
-                  value={editFormData.username || ""}
-                  onChange={(e) => setEditFormData({ ...editFormData, username: e.target.value })}
-                />
-              </div>
-            ) : currentLevel === "fonduri" || currentLevel === "compartimente" ? (
+            {currentLevel === "fonduri" || currentLevel === "compartimente" ? (
               <div className="space-y-2">
                 <Label>Nume</Label>
                 <Input
