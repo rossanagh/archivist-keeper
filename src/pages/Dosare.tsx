@@ -338,11 +338,13 @@ const Dosare = () => {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws);
 
-        console.log("Excel data parsed:", data);
-        console.log("First row sample:", data[0]);
-
         if (!data.length) {
-          throw new Error("Fișierul nu conține date valide");
+          toast({
+            variant: "destructive",
+            title: "Eroare la import",
+            description: "Fișierul nu conține date valide",
+          });
+          return;
         }
 
         const dosareData = data.map((row: any) => {
@@ -355,7 +357,9 @@ const Dosare = () => {
           const observatii = row["Observații"] || row["observatii"];
           const nrCutie = row["Nr. cutie"] || row["nr_cutie"];
 
-          console.log("Processing row:", { nrCrt, indicativ, continut, dateExtreme, numarFile });
+          if (!nrCrt || !indicativ || !continut || !dateExtreme || !numarFile) {
+            throw new Error(`Lipsesc date obligatorii pe rândul cu nr. crt ${nrCrt || 'necunoscut'}`);
+          }
 
           return {
             nr_crt: Number(nrCrt),
@@ -369,10 +373,38 @@ const Dosare = () => {
           };
         });
 
-        console.log("Processed dosare data:", dosareData);
+        // Sort by nr_crt to validate sequence
+        const sortedData = [...dosareData].sort((a, b) => a.nr_crt - b.nr_crt);
+        
+        // Validate no numbers are skipped in the Excel file
+        for (let i = 0; i < sortedData.length - 1; i++) {
+          const current = sortedData[i].nr_crt;
+          const next = sortedData[i + 1].nr_crt;
+          
+          if (next - current > 1) {
+            toast({
+              variant: "destructive",
+              title: "Eroare la import",
+              description: `Lipsesc numerele curente între ${current} și ${next}. Nu se pot sări numere în secvență.`,
+            });
+            return;
+          }
+        }
+
+        // Get existing dosare to check which are updates vs inserts
+        const { data: existingDosare } = await supabase
+          .from("dosare")
+          .select("nr_crt")
+          .eq("inventar_id", inventarId);
+
+        const existingNrCrt = new Set(existingDosare?.map(d => d.nr_crt) || []);
+        let updatedCount = 0;
+        let insertedCount = 0;
 
         // Upsert: update existing records and insert new ones
         for (const dosar of dosareData) {
+          const isUpdate = existingNrCrt.has(dosar.nr_crt);
+          
           const { error } = await supabase
             .from("dosare")
             .upsert(dosar, {
@@ -380,7 +412,20 @@ const Dosare = () => {
               ignoreDuplicates: false
             });
 
-          if (error) throw error;
+          if (error) {
+            toast({
+              variant: "destructive",
+              title: "Eroare la import",
+              description: `Eroare la dosarul cu nr. crt ${dosar.nr_crt}: ${error.message}`,
+            });
+            return;
+          }
+
+          if (isUpdate) {
+            updatedCount++;
+          } else {
+            insertedCount++;
+          }
         }
 
         const sortedNrCrt = dosareData.map(d => d.nr_crt).sort((a, b) => a - b);
@@ -402,6 +447,8 @@ const Dosare = () => {
             record_id: inventarId,
             details: {
               count: dosareData.length,
+              updated: updatedCount,
+              inserted: insertedCount,
               nr_crt_range: `${sortedNrCrt[0]}-${sortedNrCrt[sortedNrCrt.length - 1]}`,
               inventar_an: inventarAn,
               fond: fondNume,
@@ -411,9 +458,18 @@ const Dosare = () => {
           });
         }
 
+        let description = `Total ${dosareData.length} dosare procesate`;
+        if (updatedCount > 0 && insertedCount > 0) {
+          description += `: ${insertedCount} noi, ${updatedCount} actualizate`;
+        } else if (updatedCount > 0) {
+          description += `: ${updatedCount} dosare actualizate`;
+        } else if (insertedCount > 0) {
+          description += `: ${insertedCount} dosare noi adăugate`;
+        }
+
         toast({
           title: "Import reușit",
-          description: `${dosareData.length} dosare au fost importate/actualizate`,
+          description: description,
         });
         loadDosare();
       } catch (error: any) {
