@@ -94,7 +94,7 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/fonduri")}>
@@ -163,7 +163,12 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         </div>
       </header>
-      <main className="container mx-auto px-4 py-8">{children}</main>
+      <main className="container mx-auto px-4 py-8 flex-1">{children}</main>
+      <footer className="border-t bg-card py-4 mt-auto">
+        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+          © 2025 Silurus Site - Made by Rossana Ghiciu
+        </div>
+      </footer>
     </div>
   );
 };
