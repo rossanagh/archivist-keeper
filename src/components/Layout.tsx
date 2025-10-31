@@ -164,9 +164,9 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
       <main className="container mx-auto px-4 py-8 flex-1">{children}</main>
-      <footer className="border-t bg-card py-4 mt-auto">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          © 2025 Silurus Site - Made by Rossana Ghiciu
+      <footer className="border-t bg-card py-3 mt-auto">
+        <div className="container mx-auto px-4 text-center text-xs text-muted-foreground">
+          © 2025 Silurus - Made by Rossana Ghiciu
         </div>
       </footer>
     </div>
