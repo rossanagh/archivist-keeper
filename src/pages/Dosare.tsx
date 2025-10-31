@@ -329,14 +329,18 @@ const Dosare = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log("Import started for file:", file.name);
+
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
+        console.log("File read successfully, processing data...");
         const bstr = evt.target?.result;
         const wb = XLSX.read(bstr, { type: "binary" });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws);
+        console.log("Parsed Excel data:", data.length, "rows");
 
         if (!data.length) {
           toast({
@@ -518,17 +522,26 @@ const Dosare = () => {
           description += `: ${insertedCount} dosare noi adăugate`;
         }
 
+        console.log("Import successful:", { updatedCount, insertedCount });
         toast({
           title: "Import reușit",
           description: description,
         });
+        
+        // Reset the file input so the same file can be imported again
+        e.target.value = "";
+        
         loadDosare();
       } catch (error: any) {
+        console.error("Import error:", error);
         toast({
           variant: "destructive",
           title: "Eroare la import",
           description: error.message || "Verificați formatul fișierului",
         });
+        
+        // Reset the file input even on error
+        e.target.value = "";
       }
     };
     reader.readAsBinaryString(file);
