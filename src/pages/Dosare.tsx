@@ -390,6 +390,16 @@ const Dosare = () => {
         // Sort by nr_crt to validate sequence
         const sortedData = [...dosareData].sort((a, b) => a.nr_crt - b.nr_crt);
         
+        // Validate sequence starts from 1
+        if (sortedData.length > 0 && sortedData[0].nr_crt !== 1) {
+          toast({
+            variant: "destructive",
+            title: "Eroare la import",
+            description: `Numerotarea trebuie să înceapă de la 1, nu de la ${sortedData[0].nr_crt}.`,
+          });
+          return;
+        }
+        
         // Validate no numbers are skipped in the Excel file
         for (let i = 0; i < sortedData.length - 1; i++) {
           const current = sortedData[i].nr_crt;
@@ -406,17 +416,25 @@ const Dosare = () => {
         }
 
         // Get existing dosare to check which are updates vs inserts
-        const { data: existingDosare } = await supabase
+        const { data: existingDosare, error: fetchError } = await supabase
           .from("dosare")
           .select("nr_crt, id")
           .eq("inventar_id", inventarId);
 
+        if (fetchError) {
+          toast({
+            variant: "destructive",
+            title: "Eroare la import",
+            description: `Nu s-au putut încărca dosarele existente: ${fetchError.message}`,
+          });
+          return;
+        }
+
         const existingMap = new Map(existingDosare?.map(d => [d.nr_crt, d.id]) || []);
         let updatedCount = 0;
         let insertedCount = 0;
-        const errors: string[] = [];
 
-        // Process each dosar from Excel
+        // Process all dosare - execute updates one by one to ensure proper execution
         for (const dosar of dosareData) {
           const existingId = existingMap.get(dosar.nr_crt);
           
@@ -435,10 +453,14 @@ const Dosare = () => {
               .eq("id", existingId);
 
             if (error) {
-              errors.push(`Nr. crt ${dosar.nr_crt}: ${error.message}`);
-            } else {
-              updatedCount++;
+              toast({
+                variant: "destructive",
+                title: "Eroare la actualizare",
+                description: `Eroare la dosarul nr. crt ${dosar.nr_crt}: ${error.message}`,
+              });
+              return;
             }
+            updatedCount++;
           } else {
             // Insert new record
             const { error } = await supabase
@@ -446,21 +468,15 @@ const Dosare = () => {
               .insert(dosar);
 
             if (error) {
-              errors.push(`Nr. crt ${dosar.nr_crt}: ${error.message}`);
-            } else {
-              insertedCount++;
+              toast({
+                variant: "destructive",
+                title: "Eroare la inserare",
+                description: `Eroare la dosarul nr. crt ${dosar.nr_crt}: ${error.message}`,
+              });
+              return;
             }
+            insertedCount++;
           }
-        }
-
-        // If there were any errors, show them and stop
-        if (errors.length > 0) {
-          toast({
-            variant: "destructive",
-            title: "Eroare la import",
-            description: errors.join("; "),
-          });
-          return;
         }
 
         const sortedNrCrt = dosareData.map(d => d.nr_crt).sort((a, b) => a - b);
