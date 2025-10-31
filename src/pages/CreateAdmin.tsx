@@ -13,6 +13,7 @@ import { ChevronLeft } from "lucide-react";
 const CreateAdmin = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [fullAccess, setFullAccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -75,7 +76,7 @@ const CreateAdmin = () => {
 
       // Call the edge function to create admin
       const { data, error } = await supabase.functions.invoke('create-admin', {
-        body: { username, password },
+        body: { username, password, full_access: fullAccess },
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
@@ -94,6 +95,7 @@ const CreateAdmin = () => {
 
       setUsername("");
       setPassword("");
+      setFullAccess(false);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast({
@@ -166,6 +168,18 @@ const CreateAdmin = () => {
                   required
                   minLength={6}
                 />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="fullAccess"
+                  checked={fullAccess}
+                  onChange={(e) => setFullAccess(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <label htmlFor="fullAccess" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Admin cu acces total (Database Management + Creare Admin)
+                </label>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Se creează..." : "Creare Administrator"}

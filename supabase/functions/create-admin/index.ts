@@ -55,7 +55,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { username, password } = await req.json();
+    const { username, password, full_access = false } = await req.json();
 
     if (!username || !password) {
       return new Response(
@@ -123,6 +123,14 @@ serve(async (req) => {
 
     // Admin role is automatically assigned by the handle_new_user trigger
     // No need to manually insert into user_roles table
+
+    // Update profile with full_access flag
+    if (full_access) {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ full_access: true })
+        .eq("id", authData.user.id);
+    }
 
     // Log the action
     const { data: requestingUserProfile } = await supabaseAdmin

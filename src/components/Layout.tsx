@@ -13,6 +13,7 @@ const Layout = ({ children }: LayoutProps) => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [username, setUsername] = useState("");
+  const [hasFullAccess, setHasFullAccess] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,12 +55,13 @@ const Layout = ({ children }: LayoutProps) => {
   const loadUsername = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("username")
+      .select("username, full_access")
       .eq("id", userId)
       .maybeSingle();
 
     if (data) {
       setUsername(data.username);
+      setHasFullAccess(data.full_access || false);
     }
   };
 
@@ -104,6 +106,19 @@ const Layout = ({ children }: LayoutProps) => {
               </p>
             </div>
           </div>
+          
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => window.location.reload()}
+              title="Reîmprospătează pagina"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+                <path d="M21 3v5h-5"/>
+              </svg>
+            </Button>
 
           {user && (
             <div className="flex items-center gap-4">
@@ -125,7 +140,7 @@ const Layout = ({ children }: LayoutProps) => {
                     <KeyRound className="h-4 w-4 mr-2" />
                     Gestionare Parole
                   </Button>
-                  {username === "ghitaoarga" && (
+                  {hasFullAccess && (
                     <>
                       <Button variant="outline" size="sm" onClick={() => navigate("/database-management")}>
                         <Database className="h-4 w-4 mr-2" />
@@ -145,6 +160,7 @@ const Layout = ({ children }: LayoutProps) => {
               </Button>
             </div>
           )}
+          </div>
         </div>
       </header>
       <main className="container mx-auto px-4 py-8">{children}</main>

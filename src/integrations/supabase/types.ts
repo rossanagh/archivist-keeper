@@ -197,16 +197,19 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          full_access: boolean
           id: string
           username: string
         }
         Insert: {
           created_at?: string | null
+          full_access?: boolean
           id: string
           username: string
         }
         Update: {
           created_at?: string | null
+          full_access?: boolean
           id?: string
           username?: string
         }

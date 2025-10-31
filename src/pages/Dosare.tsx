@@ -336,7 +336,7 @@ const Dosare = () => {
         const wb = XLSX.read(bstr, { type: "binary" });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws); // Read all data directly
+        const data = XLSX.utils.sheet_to_json(ws);
 
         console.log("Excel data parsed:", data);
         console.log("First row sample:", data[0]);
@@ -344,14 +344,6 @@ const Dosare = () => {
         if (!data.length) {
           throw new Error("Fișierul nu conține date valide");
         }
-
-        // Get existing dosare for this inventar to check for duplicates
-        const { data: existingDosare } = await supabase
-          .from("dosare")
-          .select("nr_crt")
-          .eq("inventar_id", inventarId);
-
-        const existingNrCrt = new Set(existingDosare?.map(d => d.nr_crt) || []);
 
         const dosareData = data.map((row: any) => {
           // Handle both column name formats
@@ -379,41 +371,19 @@ const Dosare = () => {
 
         console.log("Processed dosare data:", dosareData);
 
-        // Validate nr_crt
-        const nrCrtValues = dosareData.map(d => d.nr_crt);
-        const nrCrtSet = new Set(nrCrtValues);
+        // Upsert: update existing records and insert new ones
+        for (const dosar of dosareData) {
+          const { error } = await supabase
+            .from("dosare")
+            .upsert(dosar, {
+              onConflict: 'inventar_id,nr_crt',
+              ignoreDuplicates: false
+            });
 
-        // Check for duplicates in import file
-        if (nrCrtSet.size !== nrCrtValues.length) {
-          throw new Error("Fișierul conține numere curente duplicate");
+          if (error) throw error;
         }
 
-        // Check for duplicates with existing data
-        const duplicates = nrCrtValues.filter(nr => existingNrCrt.has(nr));
-        if (duplicates.length > 0) {
-          throw new Error(`Numerele curente ${duplicates.join(", ")} există deja în baza de date`);
-        }
-
-        // Check for gaps in sequence
-        const sortedNrCrt = [...nrCrtValues].sort((a, b) => a - b);
-        for (let i = 1; i < sortedNrCrt.length; i++) {
-          if (sortedNrCrt[i] !== sortedNrCrt[i - 1] + 1) {
-            throw new Error(`Lipsește numărul curent ${sortedNrCrt[i - 1] + 1} în secvență`);
-          }
-        }
-
-        // Validate that nr_crt starts from 1 or continues from existing
-        const maxExisting = existingDosare && existingDosare.length > 0 
-          ? Math.max(...existingDosare.map(d => d.nr_crt)) 
-          : 0;
-        
-        if (sortedNrCrt[0] !== maxExisting + 1 && sortedNrCrt[0] !== 1) {
-          throw new Error(`Primul număr curent trebuie să fie ${maxExisting > 0 ? maxExisting + 1 : 1}, nu ${sortedNrCrt[0]}`);
-        }
-
-        const { error } = await supabase.from("dosare").insert(dosareData);
-
-        if (error) throw error;
+        const sortedNrCrt = dosareData.map(d => d.nr_crt).sort((a, b) => a - b);
 
         // Log import event
         const { data: { user } } = await supabase.auth.getUser();
@@ -443,7 +413,7 @@ const Dosare = () => {
 
         toast({
           title: "Import reușit",
-          description: `${dosareData.length} dosare au fost importate`,
+          description: `${dosareData.length} dosare au fost importate/actualizate`,
         });
         loadDosare();
       } catch (error: any) {
