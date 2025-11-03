@@ -339,43 +339,103 @@ const Dosare = () => {
         const wb = XLSX.read(bstr, { type: "binary" });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws);
-        console.log("Parsed Excel data:", data.length, "rows");
+        
+        // Convert to array of arrays to find where the table starts
+        const rawData: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+        console.log("Raw Excel data:", rawData.length, "rows");
 
-        if (!data.length) {
+        // Find the header row by looking for key column names
+        let headerRowIndex = -1;
+        let headerMapping: { [key: string]: number } = {};
+        
+        for (let i = 0; i < rawData.length; i++) {
+          const row = rawData[i];
+          // Look for "Nr. crt" or "nr_crt" or similar variations
+          const nrCrtIndex = row.findIndex((cell: any) => {
+            const cellStr = String(cell).toLowerCase().trim();
+            return cellStr.includes("nr") && (cellStr.includes("crt") || cellStr.includes("curent"));
+          });
+          
+          if (nrCrtIndex !== -1) {
+            headerRowIndex = i;
+            // Map all headers
+            row.forEach((header: any, index: number) => {
+              const headerStr = String(header).toLowerCase().trim();
+              if (headerStr.includes("nr") && (headerStr.includes("crt") || headerStr.includes("curent"))) {
+                headerMapping["nr_crt"] = index;
+              } else if (headerStr.includes("indicativ") || headerStr.includes("nomenclator")) {
+                headerMapping["indicativ_nomenclator"] = index;
+              } else if (headerStr.includes("conținut") || headerStr.includes("continut")) {
+                headerMapping["continut"] = index;
+              } else if (headerStr.includes("date") && headerStr.includes("extreme")) {
+                headerMapping["date_extreme"] = index;
+              } else if (headerStr.includes("număr") && headerStr.includes("file") || headerStr.includes("numar") && headerStr.includes("file")) {
+                headerMapping["numar_file"] = index;
+              } else if (headerStr.includes("observații") || headerStr.includes("observatii")) {
+                headerMapping["observatii"] = index;
+              } else if (headerStr.includes("cutie")) {
+                headerMapping["nr_cutie"] = index;
+              }
+            });
+            break;
+          }
+        }
+
+        if (headerRowIndex === -1) {
           toast({
             variant: "destructive",
             title: "Eroare la import",
-            description: "Fișierul nu conține date valide",
+            description: "Nu s-a găsit tabelul cu date. Asigurați-vă că fișierul conține coloanele necesare.",
           });
           return;
         }
 
-        const dosareData = data.map((row: any) => {
-          // Handle both column name formats
-          const nrCrt = row["__EMPTY"] || row["Nr. crt"] || row["nr_crt"];
-          const indicativ = row["Indicativ nomenclator"] || row["indicativ_nomenclator"];
-          const continut = row["Conținut"] || row["continut"];
-          const dateExtreme = row["Date extreme"] || row["date_extreme"];
-          const numarFile = row["Număr file"] || row["numar_file"];
-          const observatii = row["Observații"] || row["observatii"];
-          const nrCutie = row["Nr. cutie"] || row["nr_cutie"];
+        console.log("Found header row at index:", headerRowIndex);
+        console.log("Header mapping:", headerMapping);
 
-          if (!nrCrt || !indicativ || !continut || !dateExtreme || !numarFile) {
-            throw new Error(`Lipsesc date obligatorii pe rândul cu nr. crt ${nrCrt || 'necunoscut'}`);
-          }
+        // Parse data rows starting after the header
+        const dataRows = rawData.slice(headerRowIndex + 1);
+        const dosareData = dataRows
+          .filter((row: any[]) => {
+            // Skip empty rows or rows where nr_crt is empty
+            const nrCrtValue = row[headerMapping["nr_crt"]];
+            return nrCrtValue && String(nrCrtValue).trim() !== "";
+          })
+          .map((row: any[]) => {
+            const nrCrt = row[headerMapping["nr_crt"]];
+            const indicativ = row[headerMapping["indicativ_nomenclator"]];
+            const continut = row[headerMapping["continut"]];
+            const dateExtreme = row[headerMapping["date_extreme"]];
+            const numarFile = row[headerMapping["numar_file"]];
+            const observatii = row[headerMapping["observatii"]];
+            const nrCutie = row[headerMapping["nr_cutie"]];
 
-          return {
-            nr_crt: Number(nrCrt),
-            indicativ_nomenclator: indicativ,
-            continut: continut,
-            date_extreme: dateExtreme,
-            numar_file: Number(numarFile),
-            observatii: observatii || null,
-            nr_cutie: nrCutie ? Number(nrCutie) : null,
-            inventar_id: inventarId,
-          };
-        });
+            if (!nrCrt || !indicativ || !continut || !dateExtreme || !numarFile) {
+              throw new Error(`Lipsesc date obligatorii pe rândul cu nr. crt ${nrCrt || 'necunoscut'}`);
+            }
+
+            return {
+              nr_crt: Number(nrCrt),
+              indicativ_nomenclator: String(indicativ).trim(),
+              continut: String(continut).trim(),
+              date_extreme: String(dateExtreme).trim(),
+              numar_file: Number(numarFile),
+              observatii: observatii ? String(observatii).trim() : null,
+              nr_cutie: nrCutie ? Number(nrCutie) : null,
+              inventar_id: inventarId,
+            };
+          });
+
+        console.log("Parsed dosare data:", dosareData.length, "rows");
+
+        if (!dosareData.length) {
+          toast({
+            variant: "destructive",
+            title: "Eroare la import",
+            description: "Fișierul nu conține date valide după antetul tabelului",
+          });
+          return;
+        }
 
         // Check for duplicates within the Excel file itself
         const nrCrtInExcel = dosareData.map(d => d.nr_crt);
