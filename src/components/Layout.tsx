@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Archive, LogOut, LogIn, History, UserPlus, KeyRound, Database } from "lucide-react";
+import { Archive, LogOut, LogIn, History, UserPlus, KeyRound, Database, Crown } from "lucide-react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface LayoutProps {
@@ -124,6 +124,9 @@ const Layout = ({ children }: LayoutProps) => {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium">{username}</span>
+                {hasFullAccess && (
+                  <Crown className="h-4 w-4 text-yellow-500" />
+                )}
                 {isAdmin && (
                   <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
                     Admin

@@ -31,8 +31,10 @@ const Dosare = () => {
   const [fondNume, setFondNume] = useState<string>("");
   const [compartimentNume, setCompartimentNume] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasFullAccess, setHasFullAccess] = useState(false);
   const [userId, setUserId] = useState<string>("");
   const [open, setOpen] = useState(false);
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -71,6 +73,7 @@ const Dosare = () => {
     await loadCompartiment();
     await loadDosare();
     await checkAdmin(user.id);
+    await checkFullAccess(user.id);
     setLoading(false);
   };
 
@@ -94,6 +97,15 @@ const Dosare = () => {
       .eq("role", "admin")
       .maybeSingle();
     setIsAdmin(!!data);
+  };
+
+  const checkFullAccess = async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_access")
+      .eq("id", userId)
+      .maybeSingle();
+    setHasFullAccess(data?.full_access || false);
   };
 
   const loadInventar = async () => {
@@ -507,14 +519,40 @@ const Dosare = () => {
         const existingMap = new Map(existingDosare?.map(d => [d.nr_crt, d.id]) || []);
         let insertedCount = 0;
         let skippedCount = 0;
+        let updatedCount = 0;
 
-        // Process all dosare - only insert new ones, skip existing
+        // Process all dosare - insert new ones, update or skip existing based on checkbox
         for (const dosar of dosareData) {
           const existingId = existingMap.get(dosar.nr_crt);
           
           if (existingId) {
-            // Skip existing record
-            skippedCount++;
+            if (overwriteExisting && hasFullAccess) {
+              // Update existing record if overwrite is enabled and user has full access
+              const { error } = await supabase
+                .from("dosare")
+                .update({
+                  indicativ_nomenclator: dosar.indicativ_nomenclator,
+                  continut: dosar.continut,
+                  date_extreme: dosar.date_extreme,
+                  numar_file: dosar.numar_file,
+                  observatii: dosar.observatii,
+                  nr_cutie: dosar.nr_cutie,
+                })
+                .eq("id", existingId);
+
+              if (error) {
+                toast({
+                  variant: "destructive",
+                  title: "Eroare la actualizare",
+                  description: `Eroare la dosarul nr. crt ${dosar.nr_crt}: ${error.message}`,
+                });
+                return;
+              }
+              updatedCount++;
+            } else {
+              // Skip existing record
+              skippedCount++;
+            }
           } else {
             // Insert new record
             const { error } = await supabase
@@ -554,6 +592,8 @@ const Dosare = () => {
               count: dosareData.length,
               skipped: skippedCount,
               inserted: insertedCount,
+              updated: updatedCount,
+              overwrite_enabled: overwriteExisting,
               nr_crt_range: `${sortedNrCrt[0]}-${sortedNrCrt[sortedNrCrt.length - 1]}`,
               inventar_an: inventarAn,
               fond: fondNume,
@@ -564,15 +604,16 @@ const Dosare = () => {
         }
 
         let description = `Total ${dosareData.length} dosare procesate`;
-        if (skippedCount > 0 && insertedCount > 0) {
-          description += `: ${insertedCount} noi, ${skippedCount} sărite (existente)`;
-        } else if (skippedCount > 0) {
-          description += `: ${skippedCount} dosare sărite (existente)`;
-        } else if (insertedCount > 0) {
-          description += `: ${insertedCount} dosare noi adăugate`;
+        const parts = [];
+        if (insertedCount > 0) parts.push(`${insertedCount} noi`);
+        if (updatedCount > 0) parts.push(`${updatedCount} actualizate`);
+        if (skippedCount > 0) parts.push(`${skippedCount} sărite`);
+        
+        if (parts.length > 0) {
+          description += `: ${parts.join(', ')}`;
         }
 
-        console.log("Import successful:", { skippedCount, insertedCount });
+        console.log("Import successful:", { skippedCount, insertedCount, updatedCount });
         toast({
           title: "Import reușit",
           description: description,
@@ -656,8 +697,23 @@ const Dosare = () => {
               <p className="text-muted-foreground">Inventar {inventarAn}</p>
             </div>
             {isAdmin && (
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleExport}>
+              <div className="flex flex-col gap-3">
+                {hasFullAccess && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="overwrite"
+                      checked={overwriteExisting}
+                      onChange={(e) => setOverwriteExisting(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label htmlFor="overwrite" className="text-sm cursor-pointer">
+                      Suprascrie dosare existente la import
+                    </Label>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleExport}>
                   <Download className="h-4 w-4 mr-2" />
                   Export Excel
                 </Button>
@@ -673,7 +729,7 @@ const Dosare = () => {
                     />
                   </label>
                 </Button>
-                <Dialog open={open} onOpenChange={setOpen}>
+                  <Dialog open={open} onOpenChange={setOpen}>
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
@@ -783,6 +839,7 @@ const Dosare = () => {
                     </form>
                   </DialogContent>
                 </Dialog>
+                </div>
               </div>
             )}
           </div>

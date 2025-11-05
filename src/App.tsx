@@ -22,6 +22,14 @@ const queryClient = new QueryClient();
 const App = () => {
   useEffect(() => {
     const handleBeforeUnload = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Deblocare inventare
+        await supabase
+          .from("inventare")
+          .update({ locked_by: null, locked_at: null })
+          .eq("locked_by", user.id);
+      }
       await supabase.auth.signOut();
     };
 
