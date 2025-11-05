@@ -339,132 +339,109 @@ const Dosare = () => {
 
   const handleDownloadLabels = async () => {
     try {
-      const wb = XLSX.utils.book_new();
-      const labelsData: any[][] = [];
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = 297;
+      const pageHeight = 210;
       
-      // Process each dosar - 2 labels per row (cotor + coperta)
-      for (let i = 0; i < dosare.length; i += 2) {
-        const dosar1 = dosare[i];
-        const dosar2 = dosare[i + 1];
-        
-        // Header row pentru Nr. Crt și Institutia
-        labelsData.push(
-          Array(10).fill("Nr. Crt").concat(
-            [fondNume], Array(4).fill(""), 
-            dosar2 ? [fondNume] : [""], Array(3).fill("")
-          )
-        );
-        labelsData.push(Array(19).fill(""));
-        
-        // Row pentru An și Compartiment
-        labelsData.push(
-          Array(10).fill("An").concat(
-            [compartimentNume], Array(4).fill(""),
-            dosar2 ? [compartimentNume] : [""], Array(3).fill("")
-          )
-        );
-        
-        // Row pentru Indicativ și Dos. Nr.
-        labelsData.push(
-          Array(10).fill("").concat(
-            ["Indicativ", "", "", "Dos. Nr.", ""],
-            dosar2 ? ["Indicativ", "", "", "Dos. Nr."] : ["", "", "", ""]
-          )
-        );
-        
-        // Row pentru CONTINUTUL PE SCURT și Denumire pe scurt
-        labelsData.push(
-          Array(10).fill("CONTINUTUL PE SCURT AL DOSARULUI").concat(
-            ["Denumire pe scurt"], Array(4).fill(""),
-            dosar2 ? ["Denumire pe scurt"] : [""], Array(3).fill("")
-          )
-        );
-        
-        labelsData.push(Array(19).fill(""));
-        labelsData.push(Array(19).fill(""));
-        labelsData.push(Array(19).fill(""));
-        labelsData.push(Array(19).fill(""));
-        
-        // Row pentru Date extreme și TP
-        labelsData.push(
-          Array(10).fill("").concat(
-            ["Date extreme", "", "", "TP", ""],
-            dosar2 ? ["Date extreme", "", "", "TP"] : ["", "", "", ""]
-          )
-        );
-        
-        // === DATA ROWS === 
-        // Nr. Crt data
-        labelsData.push(
-          Array(10).fill(dosar1.nr_crt).concat(
-            [fondNume], Array(4).fill(""),
-            dosar2 ? [fondNume] : [""], Array(3).fill("")
-          )
-        );
-        labelsData.push(Array(19).fill(""));
-        
-        // An data
-        labelsData.push(
-          Array(10).fill(inventarAn).concat(
-            [compartimentNume], Array(4).fill(""),
-            dosar2 ? [compartimentNume] : [""], Array(3).fill("")
-          )
-        );
-        
-        // Indicativ și Nr. Dosar data
-        labelsData.push(
-          Array(10).fill("").concat(
-            [dosar1.indicativ_nomenclator, "", "", dosar1.nr_crt, ""],
-            dosar2 ? [dosar2.indicativ_nomenclator, "", "", dosar2.nr_crt] : ["", "", "", ""]
-          )
-        );
-        
-        // Continut data
-        labelsData.push(
-          Array(10).fill(dosar1.continut).concat(
-            [dosar1.continut], Array(4).fill(""),
-            dosar2 ? [dosar2.continut] : [""], Array(3).fill("")
-          )
-        );
-        
-        labelsData.push(Array(19).fill(""));
-        labelsData.push(Array(19).fill(""));
-        labelsData.push(Array(19).fill(""));
-        labelsData.push(Array(19).fill(""));
-        
-        // Date extreme și TP data
-        labelsData.push(
-          Array(10).fill("").concat(
-            [dosar1.date_extreme, "", "", inventarTermen, ""],
-            dosar2 ? [dosar2.date_extreme, "", "", inventarTermen] : ["", "", "", ""]
-          )
-        );
-        
-        // TP row pe verticală
-        labelsData.push(
-          Array(10).fill(inventarTermen).concat(Array(9).fill(""))
-        );
-        labelsData.push(Array(19).fill(""));
-        labelsData.push(Array(19).fill(""));
-        
-        // Separator între perechi
-        labelsData.push(Array(19).fill(""));
+      // Spine labels (left): 10 columns
+      const spineWidth = 10;
+      const spineStartX = 5;
+      const spineStartY = 10;
+      const spineHeight = 185;
+      
+      // Cover labels (right): 2 columns
+      const coverStartX = 115;
+      const coverWidth = 85;
+      const coverHeight = 35;
+      const coverGap = 2;
+      
+      let dosarIndex = 0;
+      let needNewPage = false;
+
+      while (dosarIndex < dosare.length) {
+        if (needNewPage) {
+          doc.addPage();
+          needNewPage = false;
+        }
+
+        // Draw 10 spine labels (vertical text)
+        for (let spineCol = 0; spineCol < 10 && dosarIndex < dosare.length; spineCol++) {
+          const dosar = dosare[dosarIndex];
+          const x = spineStartX + (spineCol * spineWidth);
+          
+          // Draw border
+          doc.setLineWidth(0.3);
+          doc.rect(x, spineStartY, spineWidth, spineHeight);
+          
+          // Vertical text
+          doc.setFontSize(7);
+          doc.text(`${dosar.nr_crt}`, x + 5, spineStartY + 15, { angle: 90 });
+          doc.text(`${inventarAn}`, x + 5, spineStartY + 30, { angle: 90 });
+          
+          // Continut vertical (truncated)
+          const continut = (dosar.continut || '').substring(0, 150);
+          doc.setFontSize(6);
+          doc.text(continut, x + 5, spineStartY + 50, { angle: 90, maxWidth: 120 });
+          
+          doc.setFontSize(7);
+          doc.text(`${inventarTermen}`, x + 5, spineStartY + 175, { angle: 90 });
+          
+          dosarIndex++;
+        }
+
+        // Draw up to 5 pairs of cover labels (horizontal text)
+        const coverStartIndex = dosarIndex - Math.min(10, dosarIndex);
+        for (let coverRow = 0; coverRow < 5; coverRow++) {
+          for (let coverCol = 0; coverCol < 2; coverCol++) {
+            const idx = coverStartIndex + (coverRow * 2) + coverCol;
+            if (idx >= dosarIndex) break;
+            
+            const dosar = dosare[idx];
+            const x = coverStartX + (coverCol * (coverWidth + coverGap));
+            const y = spineStartY + (coverRow * (coverHeight + coverGap));
+            
+            // Draw border
+            doc.setLineWidth(0.3);
+            doc.rect(x, y, coverWidth, coverHeight);
+            
+            // Content
+            doc.setFontSize(8);
+            let yPos = y + 5;
+            
+            doc.text(`Institutia: ${fondNume}`, x + 2, yPos);
+            yPos += 5;
+            
+            doc.text(`Compartiment: ${compartimentNume}`, x + 2, yPos);
+            yPos += 5;
+            
+            doc.text(`Indicativ: ${dosar.indicativ_nomenclator || ''}`, x + 2, yPos);
+            doc.text(`Dos. Nr.: ${dosar.nr_crt}`, x + 45, yPos);
+            yPos += 5;
+            
+            // Denumire (wrapped)
+            doc.setFontSize(7);
+            const denumire = dosar.continut || '';
+            const splitText = doc.splitTextToSize(denumire, coverWidth - 4);
+            doc.text(splitText.slice(0, 2), x + 2, yPos);
+            
+            // Date extreme and TP at bottom
+            yPos = y + coverHeight - 5;
+            doc.setFontSize(8);
+            doc.text(`Date extreme: ${dosar.date_extreme || ''}`, x + 2, yPos);
+            doc.text(`TP: ${inventarTermen}`, x + 60, yPos);
+          }
+        }
+
+        needNewPage = dosarIndex < dosare.length;
       }
-      
-      // Footer
-      labelsData.push(
-        Array(19).fill(""),
-        ["MODEL ETICHETA COTOR", "", "", "", "", "", "", "", "", "", "MODEL ETICHETA COPERTA"]
-      );
 
-      // Create worksheet
-      const ws = XLSX.utils.aoa_to_sheet(labelsData);
-      
-      // Set column widths - mai înguste pentru format compact
-      ws['!cols'] = Array(19).fill({ wch: 6 });
-
-      XLSX.utils.book_append_sheet(wb, ws, "Etichete");
-      XLSX.writeFile(wb, `Etichete_Inventar_${inventarAn}.xlsx`);
+      doc.save(`Etichete_Inventar_${inventarAn}.pdf`);
 
       // Log
       const { data: { user } } = await supabase.auth.getUser();
@@ -492,14 +469,14 @@ const Dosare = () => {
 
       toast({
         title: "Etichete descărcate",
-        description: `${dosare.length} etichete generate în format Excel`,
+        description: `${dosare.length} etichete generate în format PDF`,
       });
     } catch (error) {
       console.error("Error generating labels:", error);
       toast({
         variant: "destructive",
-        title: "Eroare la generare etichete",
-        description: "Nu s-au putut genera etichetele",
+        title: "Eroare la generare",
+        description: "Nu s-au putut genera etichetele PDF",
       });
     }
   };
