@@ -90,7 +90,7 @@ export type Database = {
           inventar_id: string
           nr_crt: number
           nr_cutie: number | null
-          numar_file: number
+          numar_file: number | null
           observatii: string | null
         }
         Insert: {
@@ -103,7 +103,7 @@ export type Database = {
           inventar_id: string
           nr_crt: number
           nr_cutie?: number | null
-          numar_file: number
+          numar_file?: number | null
           observatii?: string | null
         }
         Update: {
@@ -116,7 +116,7 @@ export type Database = {
           inventar_id?: string
           nr_crt?: number
           nr_cutie?: number | null
-          numar_file?: number
+          numar_file?: number | null
           observatii?: string | null
         }
         Relationships: [
