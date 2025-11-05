@@ -505,36 +505,16 @@ const Dosare = () => {
         }
 
         const existingMap = new Map(existingDosare?.map(d => [d.nr_crt, d.id]) || []);
-        let updatedCount = 0;
         let insertedCount = 0;
+        let skippedCount = 0;
 
-        // Process all dosare - execute updates one by one to ensure proper execution
+        // Process all dosare - only insert new ones, skip existing
         for (const dosar of dosareData) {
           const existingId = existingMap.get(dosar.nr_crt);
           
           if (existingId) {
-            // Update existing record completely (overwrite all fields)
-            const { error } = await supabase
-              .from("dosare")
-              .update({
-                indicativ_nomenclator: dosar.indicativ_nomenclator,
-                continut: dosar.continut,
-                date_extreme: dosar.date_extreme,
-                numar_file: dosar.numar_file,
-                observatii: dosar.observatii,
-                nr_cutie: dosar.nr_cutie,
-              })
-              .eq("id", existingId);
-
-            if (error) {
-              toast({
-                variant: "destructive",
-                title: "Eroare la actualizare",
-                description: `Eroare la dosarul nr. crt ${dosar.nr_crt}: ${error.message}`,
-              });
-              return;
-            }
-            updatedCount++;
+            // Skip existing record
+            skippedCount++;
           } else {
             // Insert new record
             const { error } = await supabase
@@ -572,7 +552,7 @@ const Dosare = () => {
             record_id: inventarId,
             details: {
               count: dosareData.length,
-              updated: updatedCount,
+              skipped: skippedCount,
               inserted: insertedCount,
               nr_crt_range: `${sortedNrCrt[0]}-${sortedNrCrt[sortedNrCrt.length - 1]}`,
               inventar_an: inventarAn,
@@ -584,15 +564,15 @@ const Dosare = () => {
         }
 
         let description = `Total ${dosareData.length} dosare procesate`;
-        if (updatedCount > 0 && insertedCount > 0) {
-          description += `: ${insertedCount} noi, ${updatedCount} actualizate`;
-        } else if (updatedCount > 0) {
-          description += `: ${updatedCount} dosare actualizate`;
+        if (skippedCount > 0 && insertedCount > 0) {
+          description += `: ${insertedCount} noi, ${skippedCount} sărite (existente)`;
+        } else if (skippedCount > 0) {
+          description += `: ${skippedCount} dosare sărite (existente)`;
         } else if (insertedCount > 0) {
           description += `: ${insertedCount} dosare noi adăugate`;
         }
 
-        console.log("Import successful:", { updatedCount, insertedCount });
+        console.log("Import successful:", { skippedCount, insertedCount });
         toast({
           title: "Import reușit",
           description: description,
