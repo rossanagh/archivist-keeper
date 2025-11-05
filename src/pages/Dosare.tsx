@@ -349,96 +349,106 @@ const Dosare = () => {
       const pageWidth = 297;
       const pageHeight = 210;
       
-      // Spine labels (left): 10 columns
-      const spineWidth = 10;
+      // Spine labels: 8 columns per page
+      const spineWidth = 35;
       const spineStartX = 5;
       const spineStartY = 10;
-      const spineHeight = 185;
+      const spineHeight = 190;
       
-      // Cover labels (right): 2 columns
-      const coverStartX = 115;
-      const coverWidth = 85;
-      const coverHeight = 35;
-      const coverGap = 2;
+      // Cover labels: 8 per page (2 columns x 4 rows)
+      const coverStartX = 10;
+      const coverWidth = 135;
+      const coverHeight = 45;
+      const coverGapX = 5;
+      const coverGapY = 5;
       
       let dosarIndex = 0;
-      let needNewPage = false;
 
       while (dosarIndex < dosare.length) {
-        if (needNewPage) {
-          doc.addPage();
-          needNewPage = false;
-        }
-
-        // Draw 10 spine labels (vertical text)
-        for (let spineCol = 0; spineCol < 10 && dosarIndex < dosare.length; spineCol++) {
-          const dosar = dosare[dosarIndex];
-          const x = spineStartX + (spineCol * spineWidth);
+        // Page 1: Spine labels (8 columns)
+        const spinePageDosare = dosare.slice(dosarIndex, dosarIndex + 8);
+        
+        for (let i = 0; i < spinePageDosare.length; i++) {
+          const dosar = spinePageDosare[i];
+          const x = spineStartX + (i * spineWidth);
           
           // Draw border
           doc.setLineWidth(0.3);
           doc.rect(x, spineStartY, spineWidth, spineHeight);
           
-          // Vertical text
-          doc.setFontSize(7);
-          doc.text(`${dosar.nr_crt}`, x + 5, spineStartY + 15, { angle: 90 });
-          doc.text(`${inventarAn}`, x + 5, spineStartY + 30, { angle: 90 });
+          // Nr. Crt (horizontal, top)
+          doc.setFontSize(10);
+          doc.text(`Nr: ${dosar.nr_crt}`, x + spineWidth / 2, spineStartY + 10, { align: 'center' });
           
-          // Continut vertical (truncated)
-          const continut = (dosar.continut || '').substring(0, 150);
-          doc.setFontSize(6);
-          doc.text(continut, x + 5, spineStartY + 50, { angle: 90, maxWidth: 120 });
+          // Continut (vertical, centered, larger)
+          const continut = (dosar.continut || '').substring(0, 180);
+          doc.setFontSize(9);
+          const centerX = x + spineWidth / 2;
+          doc.text(continut, centerX, spineStartY + 30, { 
+            angle: 90, 
+            maxWidth: 150,
+            align: 'center'
+          });
           
-          doc.setFontSize(7);
-          doc.text(`${inventarTermen}`, x + 5, spineStartY + 175, { angle: 90 });
-          
-          dosarIndex++;
+          // Termen pastrare (horizontal, bottom)
+          doc.setFontSize(10);
+          doc.text(`TP: ${inventarTermen}`, x + spineWidth / 2, spineStartY + spineHeight - 5, { align: 'center' });
         }
 
-        // Draw up to 5 pairs of cover labels (horizontal text)
-        const coverStartIndex = dosarIndex - Math.min(10, dosarIndex);
-        for (let coverRow = 0; coverRow < 5; coverRow++) {
-          for (let coverCol = 0; coverCol < 2; coverCol++) {
-            const idx = coverStartIndex + (coverRow * 2) + coverCol;
-            if (idx >= dosarIndex) break;
+        // Page 2: Cover labels (8 cadrane: 2 columns x 4 rows)
+        if (spinePageDosare.length > 0) {
+          doc.addPage();
+          
+          for (let i = 0; i < spinePageDosare.length; i++) {
+            const dosar = spinePageDosare[i];
+            const col = i % 2;
+            const row = Math.floor(i / 2);
             
-            const dosar = dosare[idx];
-            const x = coverStartX + (coverCol * (coverWidth + coverGap));
-            const y = spineStartY + (coverRow * (coverHeight + coverGap));
+            const x = coverStartX + (col * (coverWidth + coverGapX));
+            const y = spineStartY + (row * (coverHeight + coverGapY));
             
             // Draw border
             doc.setLineWidth(0.3);
             doc.rect(x, y, coverWidth, coverHeight);
             
             // Content
-            doc.setFontSize(8);
-            let yPos = y + 5;
+            doc.setFontSize(9);
+            let yPos = y + 6;
             
-            doc.text(`Institutia: ${fondNume}`, x + 2, yPos);
-            yPos += 5;
+            doc.text(`Institutia: ${fondNume}`, x + 3, yPos);
+            yPos += 6;
             
-            doc.text(`Compartiment: ${compartimentNume}`, x + 2, yPos);
-            yPos += 5;
+            // Truncate compartiment name if too long to fit
+            const compartimentText = compartimentNume.length > 30 
+              ? compartimentNume.substring(0, 27) + '...' 
+              : compartimentNume;
+            doc.text(`Compartiment: ${compartimentText}`, x + 3, yPos);
+            yPos += 6;
             
-            doc.text(`Indicativ: ${dosar.indicativ_nomenclator || ''}`, x + 2, yPos);
-            doc.text(`Dos. Nr.: ${dosar.nr_crt}`, x + 45, yPos);
-            yPos += 5;
+            doc.text(`Indicativ: ${dosar.indicativ_nomenclator || ''}`, x + 3, yPos);
+            doc.text(`Dos. Nr.: ${dosar.nr_crt}`, x + 70, yPos);
+            yPos += 6;
             
             // Denumire (wrapped)
-            doc.setFontSize(7);
+            doc.setFontSize(8);
             const denumire = dosar.continut || '';
-            const splitText = doc.splitTextToSize(denumire, coverWidth - 4);
-            doc.text(splitText.slice(0, 2), x + 2, yPos);
+            const splitText = doc.splitTextToSize(denumire, coverWidth - 6);
+            doc.text(splitText.slice(0, 2), x + 3, yPos);
             
             // Date extreme and TP at bottom
-            yPos = y + coverHeight - 5;
-            doc.setFontSize(8);
-            doc.text(`Date extreme: ${dosar.date_extreme || ''}`, x + 2, yPos);
-            doc.text(`TP: ${inventarTermen}`, x + 60, yPos);
+            yPos = y + coverHeight - 6;
+            doc.setFontSize(9);
+            doc.text(`Date extreme: ${dosar.date_extreme || ''}`, x + 3, yPos);
+            doc.text(`TP: ${inventarTermen}`, x + coverWidth - 25, yPos);
           }
         }
 
-        needNewPage = dosarIndex < dosare.length;
+        dosarIndex += 8;
+        
+        // Add new page for next batch if needed
+        if (dosarIndex < dosare.length) {
+          doc.addPage();
+        }
       }
 
       doc.save(`Etichete_Inventar_${inventarAn}.pdf`);
