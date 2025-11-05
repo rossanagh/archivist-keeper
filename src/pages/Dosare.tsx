@@ -397,9 +397,13 @@ const Dosare = () => {
         const dataRows = rawData.slice(headerRowIndex + 1);
         const dosareData = dataRows
           .filter((row: any[]) => {
-            // Skip empty rows or rows where nr_crt is empty
+            // Skip completely empty rows
+            if (!row || row.every((cell: any) => !cell || String(cell).trim() === "")) {
+              return false;
+            }
+            // Skip rows where nr_crt is empty
             const nrCrtValue = row[headerMapping["nr_crt"]];
-            return nrCrtValue && String(nrCrtValue).trim() !== "";
+            return nrCrtValue !== undefined && nrCrtValue !== null && String(nrCrtValue).trim() !== "";
           })
           .map((row: any[]) => {
             const nrCrt = row[headerMapping["nr_crt"]];
@@ -410,7 +414,14 @@ const Dosare = () => {
             const observatii = row[headerMapping["observatii"]];
             const nrCutie = row[headerMapping["nr_cutie"]];
 
-            if (!nrCrt || !indicativ || !continut || !dateExtreme || !numarFile) {
+            // Check if required fields are present and not empty
+            const hasNrCrt = nrCrt !== undefined && nrCrt !== null && String(nrCrt).trim() !== "";
+            const hasIndicativ = indicativ !== undefined && indicativ !== null && String(indicativ).trim() !== "";
+            const hasContinut = continut !== undefined && continut !== null && String(continut).trim() !== "";
+            const hasDateExtreme = dateExtreme !== undefined && dateExtreme !== null && String(dateExtreme).trim() !== "";
+            const hasNumarFile = numarFile !== undefined && numarFile !== null && String(numarFile).trim() !== "";
+
+            if (!hasNrCrt || !hasIndicativ || !hasContinut || !hasDateExtreme || !hasNumarFile) {
               throw new Error(`Lipsesc date obligatorii pe rândul cu nr. crt ${nrCrt || 'necunoscut'}`);
             }
 
@@ -420,8 +431,8 @@ const Dosare = () => {
               continut: String(continut).trim(),
               date_extreme: String(dateExtreme).trim(),
               numar_file: Number(numarFile),
-              observatii: observatii ? String(observatii).trim() : null,
-              nr_cutie: nrCutie ? Number(nrCutie) : null,
+              observatii: observatii !== undefined && observatii !== null && String(observatii).trim() !== "" ? String(observatii).trim() : null,
+              nr_cutie: nrCutie !== undefined && nrCutie !== null && String(nrCutie).trim() !== "" ? Number(nrCutie) : null,
               inventar_id: inventarId,
             };
           });
