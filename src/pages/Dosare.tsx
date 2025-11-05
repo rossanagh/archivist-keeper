@@ -195,7 +195,7 @@ const Dosare = () => {
         indicativ_nomenclator: formData.indicativ_nomenclator,
         continut: formData.continut,
         date_extreme: formData.date_extreme,
-        numar_file: parseInt(formData.numar_file),
+        numar_file: formData.numar_file ? parseInt(formData.numar_file) : null,
         observatii: formData.observatii || null,
         nr_cutie: formData.nr_cutie ? parseInt(formData.nr_cutie) : null,
         inventar_id: inventarId,
@@ -760,7 +760,7 @@ const Dosare = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="file">Număr File *</Label>
+                          <Label htmlFor="file">Număr File</Label>
                           <Input
                             id="file"
                             type="number"
@@ -768,7 +768,6 @@ const Dosare = () => {
                             onChange={(e) =>
                               setFormData({ ...formData, numar_file: e.target.value })
                             }
-                            required
                           />
                         </div>
                       </div>
