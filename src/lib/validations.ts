@@ -59,7 +59,9 @@ export const dosarSchema = z.object({
   numar_file: z.number()
     .int('Numărul de file trebuie să fie un număr întreg')
     .positive('Numărul de file trebuie să fie pozitiv')
-    .max(999999, 'Numărul de file este prea mare'),
+    .max(999999, 'Numărul de file este prea mare')
+    .optional()
+    .nullable(),
   observatii: z.string()
     .max(500, 'Observațiile trebuie să aibă maxim 500 de caractere')
     .optional(),

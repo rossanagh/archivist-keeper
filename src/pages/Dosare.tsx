@@ -419,9 +419,8 @@ const Dosare = () => {
             const hasIndicativ = indicativ !== undefined && indicativ !== null && String(indicativ).trim() !== "";
             const hasContinut = continut !== undefined && continut !== null && String(continut).trim() !== "";
             const hasDateExtreme = dateExtreme !== undefined && dateExtreme !== null && String(dateExtreme).trim() !== "";
-            const hasNumarFile = numarFile !== undefined && numarFile !== null && String(numarFile).trim() !== "";
 
-            if (!hasNrCrt || !hasIndicativ || !hasContinut || !hasDateExtreme || !hasNumarFile) {
+            if (!hasNrCrt || !hasIndicativ || !hasContinut || !hasDateExtreme) {
               throw new Error(`Lipsesc date obligatorii pe rândul cu nr. crt ${nrCrt || 'necunoscut'}`);
             }
 
@@ -430,7 +429,7 @@ const Dosare = () => {
               indicativ_nomenclator: String(indicativ).trim(),
               continut: String(continut).trim(),
               date_extreme: String(dateExtreme).trim(),
-              numar_file: Number(numarFile),
+              numar_file: numarFile !== undefined && numarFile !== null && String(numarFile).trim() !== "" ? Number(numarFile) : null,
               observatii: observatii !== undefined && observatii !== null && String(observatii).trim() !== "" ? String(observatii).trim() : null,
               nr_cutie: nrCutie !== undefined && nrCutie !== null && String(nrCutie).trim() !== "" ? Number(nrCutie) : null,
               inventar_id: inventarId,
