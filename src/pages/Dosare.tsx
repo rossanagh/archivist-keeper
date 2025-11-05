@@ -337,6 +337,120 @@ const Dosare = () => {
     }
   };
 
+  const handleDownloadLabels = async () => {
+    try {
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Create worksheet with label format (2 columns per page)
+      const labelsPerRow = 2;
+      const labelsData: any[][] = [];
+      
+      // Add header rows
+      labelsData.push(
+        Array(10).fill("Nr. Crt").concat(["Institutia"], Array(4).fill(""), ["Institutia"], Array(3).fill("")),
+        Array(19).fill(""),
+        Array(10).fill("An").concat(["Comparim"], Array(4).fill(""), ["Comparim"], Array(3).fill("")),
+        Array(10).fill("").concat(["Indicativ", "", "", "Dos. Nr.", "", "Indicativ", "", "", "Dos. Nr."]),
+        Array(10).fill("CONTINUTUL PE SCURT AL DOSARULUI").concat(["Denumire pe scurt"], Array(4).fill(""), ["Denumire pe scurt"], Array(3).fill("")),
+        Array(19).fill(""),
+        Array(19).fill(""),
+        Array(19).fill(""),
+        Array(19).fill(""),
+        Array(10).fill("").concat(["Date extreme", "", "", "TP", "", "Date extreme", "", "", "TP"])
+      );
+
+      // Process dosare in pairs for 2-column layout
+      for (let i = 0; i < dosare.length; i += labelsPerRow) {
+        const row1 = dosare[i];
+        const row2 = dosare[i + 1];
+        
+        // Add data for this pair of labels
+        labelsData.push(
+          // Nr. Crt row
+          [row1.nr_crt, row1.nr_crt, row1.nr_crt, row1.nr_crt, row1.nr_crt, row1.nr_crt, row1.nr_crt, row1.nr_crt, row1.nr_crt, row1.nr_crt, 
+           fondNume, "", "", "", "", 
+           row2 ? fondNume : "", "", "", ""],
+          Array(19).fill(""),
+          // An row
+          [inventarAn, inventarAn, inventarAn, inventarAn, inventarAn, inventarAn, inventarAn, inventarAn, inventarAn, inventarAn, 
+           compartimentNume, "", "", "", "", 
+           row2 ? compartimentNume : "", "", "", ""],
+          // Indicativ and Dos. Nr.
+          ["", "", "", "", "", "", "", "", "", "", 
+           row1.indicativ_nomenclator, "", "", row1.nr_crt, "", 
+           row2 ? row2.indicativ_nomenclator : "", "", "", row2 ? row2.nr_crt : ""],
+          // Continut
+          [row1.continut, row1.continut, row1.continut, row1.continut, row1.continut, row1.continut, row1.continut, row1.continut, row1.continut, row1.continut, 
+           row1.continut, "", "", "", "", 
+           row2 ? row2.continut : "", "", "", ""],
+          Array(19).fill(""),
+          Array(19).fill(""),
+          Array(19).fill(""),
+          Array(19).fill(""),
+          // Date extreme and TP
+          ["", "", "", "", "", "", "", "", "", "", 
+           row1.date_extreme, "", "", inventarTermen, "", 
+           row2 ? row2.date_extreme : "", "", "", row2 ? inventarTermen : ""],
+          // Separator between label pairs
+          Array(19).fill("")
+        );
+      }
+
+      // Add footer
+      labelsData.push(
+        Array(19).fill(""),
+        Array(19).fill(""),
+        ["MODEL ETICHETA COTOR", "", "", "", "", "", "", "", "", "", "MODEL ETICHETA COPERTA"]
+      );
+
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet(labelsData);
+      
+      // Set column widths
+      ws['!cols'] = Array(19).fill({ wch: 8 });
+
+      XLSX.utils.book_append_sheet(wb, ws, "Etichete");
+      XLSX.writeFile(wb, `Etichete_Inventar_${inventarAn}.xlsx`);
+
+      // Log label download event
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .single();
+
+        await supabase.from("audit_logs").insert({
+          user_id: user.id,
+          username: profile?.username || "unknown",
+          action: "DOWNLOAD_LABELS",
+          table_name: "dosare",
+          record_id: inventarId,
+          details: {
+            count: dosare.length,
+            inventar_an: inventarAn,
+            fond: fondNume,
+            compartiment: compartimentNume,
+          },
+        });
+      }
+
+      toast({
+        title: "Etichete descărcate",
+        description: `${dosare.length} etichete au fost generate`,
+      });
+    } catch (error) {
+      console.error("Error generating labels:", error);
+      toast({
+        variant: "destructive",
+        title: "Eroare la generare etichete",
+        description: "Nu s-au putut genera etichetele",
+      });
+    }
+  };
+
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -714,26 +828,32 @@ const Dosare = () => {
                 )}
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={handleExport}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Excel
-                </Button>
-                <Button variant="outline" asChild>
-                  <label className="cursor-pointer">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import Excel
-                    <input
-                      type="file"
-                      accept=".xlsx,.xls"
-                      className="hidden"
-                      onChange={handleImport}
-                    />
-                  </label>
-                </Button>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Excel
+                  </Button>
+                  {hasFullAccess && (
+                    <Button variant="outline" onClick={handleDownloadLabels}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Descarcă Etichete
+                    </Button>
+                  )}
+                  <Button variant="outline" asChild>
+                    <label className="cursor-pointer">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import Excel
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        className="hidden"
+                        onChange={handleImport}
+                      />
+                    </label>
+                  </Button>
                   <Dialog open={open} onOpenChange={setOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adaugă Dosar
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Adaugă Dosar
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
