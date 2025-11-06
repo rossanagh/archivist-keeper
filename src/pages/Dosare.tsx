@@ -349,23 +349,23 @@ const Dosare = () => {
       const pageWidth = 210;
       const pageHeight = 297;
       
-      // Spine labels: 8 rows per page
-      const spineWidth = 25;
+      // Spine labels: 8 per page (narrow vertical strips)
+      const spineWidth = 20;
       const spineHeight = 35;
-      const spineStartX = 5;
-      const spineStartY = 5;
+      const spineStartX = 8;
+      const spineStartY = 8;
       
       // Cover labels: 8 per page (2 columns x 4 rows)
-      const coverStartX = 5;
-      const coverWidth = 100;
+      const coverStartX = 8;
+      const coverWidth = 97;
       const coverHeight = 70;
-      const coverGapX = 5;
-      const coverGapY = 5;
+      const coverGapX = 3;
+      const coverGapY = 3;
       
       let dosarIndex = 0;
 
       while (dosarIndex < dosare.length) {
-        // Page 1: Spine labels (8 rows)
+        // Page 1: Spine labels (8 narrow vertical strips)
         const spinePageDosare = dosare.slice(dosarIndex, dosarIndex + 8);
         
         for (let i = 0; i < spinePageDosare.length; i++) {
@@ -373,31 +373,25 @@ const Dosare = () => {
           const y = spineStartY + (i * spineHeight);
           
           // Draw border
-          doc.setLineWidth(0.3);
+          doc.setLineWidth(0.2);
           doc.rect(spineStartX, y, spineWidth, spineHeight);
           
-          // Nr. Crt (horizontal, left)
-          doc.setFontSize(8);
-          doc.text(`Nr: ${dosar.nr_crt}`, spineStartX + 2, y + 5);
-          
-          // An inventar (horizontal, left)
-          doc.setFontSize(8);
-          doc.text(`An: ${inventarAn}`, spineStartX + 2, y + 10);
-          
-          // Continut (vertical, centered, larger)
-          const continut = (dosar.continut || '').substring(0, 120);
-          doc.setFontSize(11);
+          // Continut vertical (centered, larger) - exemplu: "Ghiciu Rossana"
+          const continut = (dosar.continut || '').substring(0, 100);
+          doc.setFontSize(10);
           const centerX = spineStartX + spineWidth / 2;
           const centerY = y + spineHeight / 2;
-          doc.text(continut, centerX + 3, centerY, { 
+          doc.text(continut, centerX, centerY, { 
             angle: 90, 
-            maxWidth: spineHeight - 10,
+            maxWidth: spineHeight - 8,
             align: 'center'
           });
           
-          // TP (horizontal, bottom right)
-          doc.setFontSize(8);
-          doc.text(`TP: ${inventarTermen}`, spineStartX + 2, y + spineHeight - 2);
+          // Nr, An, TP pe margini orizontal - exemplu: "1, 2005, ..., 10 ani"
+          doc.setFontSize(7);
+          doc.text(`Nr: ${dosar.nr_crt}`, spineStartX + 1, y + 3);
+          doc.text(`${inventarAn}`, spineStartX + spineWidth - 10, y + 3);
+          doc.text(`${inventarTermen} ani`, spineStartX + 1, y + spineHeight - 1);
         }
 
         // Page 2: Cover labels (8 cadrane: 2 columns x 4 rows)
@@ -412,46 +406,45 @@ const Dosare = () => {
             const x = coverStartX + (col * (coverWidth + coverGapX));
             const y = spineStartY + (row * (coverHeight + coverGapY));
             
-            // Draw border
-            doc.setLineWidth(0.3);
+            // Draw border - trebuie sa fie perfect incadrat
+            doc.setLineWidth(0.2);
             doc.rect(x, y, coverWidth, coverHeight);
             
             // Content with padding
-            const padding = 3;
+            const padding = 2.5;
             doc.setFontSize(8);
-            let yPos = y + padding + 4;
+            let yPos = y + padding + 3.5;
             
-            // Institutia (truncate to fit)
-            const fondText = fondNume.length > 32 ? fondNume.substring(0, 29) + '...' : fondNume;
+            // Institutia
+            const fondText = fondNume.length > 40 ? fondNume.substring(0, 37) + '...' : fondNume;
             doc.text(`Institutia: ${fondText}`, x + padding, yPos);
-            yPos += 5;
+            yPos += 4.5;
             
-            // Compartiment (truncate to fit)
-            const compartimentText = compartimentNume.length > 32 
-              ? compartimentNume.substring(0, 29) + '...' 
+            // Compartiment - trebuie sa se incadreze perfect
+            const compartimentText = compartimentNume.length > 40 
+              ? compartimentNume.substring(0, 37) + '...' 
               : compartimentNume;
             doc.text(`Compartiment: ${compartimentText}`, x + padding, yPos);
-            yPos += 5;
+            yPos += 4.5;
             
-            // Indicativ and Dos. Nr. on same line
+            // Indicativ and Dos. Nr.
             doc.text(`Indicativ: ${dosar.indicativ_nomenclator || ''}`, x + padding, yPos);
-            doc.text(`Dos. Nr.: ${dosar.nr_crt}`, x + coverWidth / 2 + 5, yPos);
-            yPos += 5;
+            doc.text(`Dos. Nr.: ${dosar.nr_crt}`, x + coverWidth / 2, yPos);
+            yPos += 4.5;
             
-            // Denumire (wrapped to fit within cadran)
-            doc.setFontSize(7);
+            // Numele/Denumire
+            doc.setFontSize(7.5);
             const denumire = dosar.continut || '';
             const maxWidth = coverWidth - (2 * padding);
             const splitText = doc.splitTextToSize(denumire, maxWidth);
-            // Show max 4 lines to fit within cadran
-            const linesToShow = splitText.slice(0, 4);
+            const linesToShow = splitText.slice(0, 5);
             doc.text(linesToShow, x + padding, yPos);
             
-            // Date extreme and TP at bottom
-            yPos = y + coverHeight - padding - 4;
+            // Date extreme and TP at bottom - perfect fit
+            yPos = y + coverHeight - padding - 3;
             doc.setFontSize(8);
             doc.text(`Date extreme: ${dosar.date_extreme || ''}`, x + padding, yPos);
-            doc.text(`TP: ${inventarTermen}`, x + coverWidth - padding - 20, yPos);
+            doc.text(`TP: ${inventarTermen}`, x + coverWidth - padding - 18, yPos);
           }
         }
 
