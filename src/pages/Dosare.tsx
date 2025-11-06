@@ -384,13 +384,16 @@ const Dosare = () => {
           }
         }
         
-        // Fill in SPINE LABELS (columns B-J, 9 cotoare)
-        // Row 2 = Nr.Crt values, Row 4 = An values, Row 5 = Continut, Row 11 = TP values
+        // Fill in SPINE LABELS (columns B-J, 9 cotoare) based on CSV structure
+        // Row 2 = Nr.Crt values (1,2,3...)
+        // Row 4 = An values (2004, 2004...)
+        // Row 5 = Continut (Ghiciu Rossana, Tocea Gabriel...)
+        // Row 52 = TP values (10 ani, 10 ani...)
         for (let i = 0; i < batchDosare.length && i < 9; i++) {
           const dosar = batchDosare[i];
           const colLetter = String.fromCharCode(66 + i); // B-J (66 is 'B')
           
-          // Nr. Crt value (row 2 - Excel is 1-indexed)
+          // Nr. Crt value (row 2)
           const nrCrtCell = `${colLetter}2`;
           if (pageWs[nrCrtCell]) {
             pageWs[nrCrtCell].v = dosar.nr_crt;
@@ -411,74 +414,74 @@ const Dosare = () => {
             pageWs[continutCell].t = 's';
           }
           
-          // TP value (row 11)
-          const tpCell = `${colLetter}11`;
+          // TP value (row 52 based on CSV)
+          const tpCell = `${colLetter}52`;
           if (pageWs[tpCell]) {
             pageWs[tpCell].v = inventarTermen;
             pageWs[tpCell].t = 's';
           }
         }
         
-        // Fill in COVER LABELS (2 columns x 5 rows)
-        // First column starts at K (col 10), second column starts at O (col 14)
+        // Fill in COVER LABELS based on CSV structure
+        // Looking at CSV: First cadran starts at column K (10), row 1
+        // Pattern shows labels in 2 columns (K-N and O-R), 5 rows down
         for (let i = 0; i < batchDosare.length && i < 9; i++) {
           const dosar = batchDosare[i];
           
-          // Determine which column pair (0 or 1) and which row group (0-4)
-          const colPair = i % 2; // 0 = left (K), 1 = right (O)
-          const rowGroup = Math.floor(i / 2); // 0-4
+          // Determine which column group (left or right) and which vertical position
+          const colGroup = i % 2; // 0 = left columns K-N, 1 = right columns O-R
+          const rowOffset = Math.floor(i / 2); // 0-4 vertical positions
           
-          // Starting column: K=10, O=14
-          const startCol = colPair === 0 ? 10 : 14;
+          // Starting column: K=10 (left group), O=14 (right group)
+          const baseCol = colGroup === 0 ? 10 : 14;
           
-          // Row offsets based on template structure
-          // First label starts at row 1, next at row 10, then 19, 28, 37
-          const baseRow = 1 + (rowGroup * 9);
+          // Starting row: 1, 10, 19, 28, 37 (every 9 rows based on CSV pattern)
+          const baseRow = 1 + (rowOffset * 9);
           
-          // Institutia (first row of label)
-          const instCell = XLSX.utils.encode_cell({ r: baseRow - 1, c: startCol });
+          // Institutia (row baseRow, col K or O)
+          const instCell = XLSX.utils.encode_cell({ r: baseRow - 1, c: baseCol });
           if (pageWs[instCell]) {
             pageWs[instCell].v = fondNume;
             pageWs[instCell].t = 's';
           }
           
-          // Compartiment (baseRow + 2)
-          const compCell = XLSX.utils.encode_cell({ r: baseRow + 1, c: startCol });
+          // Compartiment (row baseRow+2, col K or O)
+          const compCell = XLSX.utils.encode_cell({ r: baseRow + 1, c: baseCol });
           if (pageWs[compCell]) {
             pageWs[compCell].v = compartimentNume;
             pageWs[compCell].t = 's';
           }
           
-          // Indicativ (baseRow + 3, col)
-          const indCell = XLSX.utils.encode_cell({ r: baseRow + 2, c: startCol });
+          // Indicativ (row baseRow+3, col K or O)
+          const indCell = XLSX.utils.encode_cell({ r: baseRow + 2, c: baseCol });
           if (pageWs[indCell]) {
             pageWs[indCell].v = dosar.indicativ_nomenclator || '';
             pageWs[indCell].t = 's';
           }
           
-          // Dos. Nr. (baseRow + 3, col+2)
-          const dosNrCell = XLSX.utils.encode_cell({ r: baseRow + 2, c: startCol + 2 });
+          // Dos. Nr. (row baseRow+3, col M or Q - offset +2 from base)
+          const dosNrCell = XLSX.utils.encode_cell({ r: baseRow + 2, c: baseCol + 2 });
           if (pageWs[dosNrCell]) {
             pageWs[dosNrCell].v = dosar.nr_crt;
             pageWs[dosNrCell].t = 'n';
           }
           
-          // Denumire pe scurt (baseRow + 4)
-          const denumCell = XLSX.utils.encode_cell({ r: baseRow + 3, c: startCol });
+          // Denumire pe scurt (row baseRow+4, col K or O)
+          const denumCell = XLSX.utils.encode_cell({ r: baseRow + 3, c: baseCol });
           if (pageWs[denumCell]) {
             pageWs[denumCell].v = dosar.continut || '';
             pageWs[denumCell].t = 's';
           }
           
-          // Date extreme (baseRow + 8, col)
-          const dateCell = XLSX.utils.encode_cell({ r: baseRow + 7, c: startCol });
+          // Date extreme (row baseRow+8, col K or O)
+          const dateCell = XLSX.utils.encode_cell({ r: baseRow + 7, c: baseCol });
           if (pageWs[dateCell]) {
             pageWs[dateCell].v = dosar.date_extreme || '';
             pageWs[dateCell].t = 's';
           }
           
-          // TP (baseRow + 8, col+2)
-          const tpCoverCell = XLSX.utils.encode_cell({ r: baseRow + 7, c: startCol + 2 });
+          // TP (row baseRow+8, col M or Q - offset +2 from base)
+          const tpCoverCell = XLSX.utils.encode_cell({ r: baseRow + 7, c: baseCol + 2 });
           if (pageWs[tpCoverCell]) {
             pageWs[tpCoverCell].v = inventarTermen;
             pageWs[tpCoverCell].t = 's';
