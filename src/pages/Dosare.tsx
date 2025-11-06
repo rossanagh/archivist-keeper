@@ -347,11 +347,11 @@ const Dosare = () => {
       const templateWorkbook = XLSX.read(templateBuffer, { type: 'array', cellStyles: true });
       const ws = templateWorkbook.Sheets[templateWorkbook.SheetNames[0]];
       
-      // Process dosare in batches of 10 (template has 10 spine labels per page)
+      // Process dosare in batches of 9 (template has 9 spine labels per page: columns B-J)
       let dosarIndex = 0;
-      const dosarePerPage = 10;
+      const dosarePerPage = 9;
       
-      // We'll create a new workbook with multiple sheets (one per page)
+      // Create a new workbook with multiple sheets (one per page)
       const wb = XLSX.utils.book_new();
       let pageNum = 0;
       
@@ -375,67 +375,73 @@ const Dosare = () => {
         if (ws['!rows']) pageWs['!rows'] = [...ws['!rows']];
         if (ws['!merges']) pageWs['!merges'] = [...ws['!merges']];
         
-        // Fill in SPINE LABELS (columns A-J, 10 cotoare)
-        for (let i = 0; i < batchDosare.length && i < 10; i++) {
+        // Fill in SPINE LABELS (columns B-J, 9 cotoare)
+        // Based on template: Row 2 = Nr.Crt values, Row 4 = An values, Row 5 = Continut, Row 11 = TP values
+        for (let i = 0; i < batchDosare.length && i < 9; i++) {
           const dosar = batchDosare[i];
-          const col = String.fromCharCode(65 + i); // A-J
+          const col = String.fromCharCode(66 + i); // B-J (66 is 'B')
           
-          // Nr. Crt (row 1)
-          const nrCrtCell = `${col}1`;
+          // Nr. Crt value (row 2)
+          const nrCrtCell = `${col}2`;
           pageWs[nrCrtCell] = { ...pageWs[nrCrtCell], v: dosar.nr_crt, t: 'n' };
           
-          // An (row 3)
-          const anCell = `${col}3`;
+          // An value (row 4)
+          const anCell = `${col}4`;
           pageWs[anCell] = { ...pageWs[anCell], v: inventarAn, t: 'n' };
           
-          // Continut pe scurt (rows 5-52, vertical text)
+          // Continut pe scurt (row 5)
           const continutCell = `${col}5`;
           pageWs[continutCell] = { ...pageWs[continutCell], v: dosar.continut || '', t: 's' };
           
-          // TP (row 54)
-          const tpCell = `${col}54`;
-          pageWs[tpCell] = { ...pageWs[tpCell], v: inventarTermen, t: 'n' };
+          // TP value (row 11)
+          const tpCell = `${col}11`;
+          pageWs[tpCell] = { ...pageWs[tpCell], v: inventarTermen, t: 's' };
         }
         
-        // Fill in COVER LABELS (columns K-T, 2 columns x 5 rows = 10 cadrane)
-        for (let i = 0; i < batchDosare.length && i < 10; i++) {
+        // Fill in COVER LABELS (2 columns x 5 rows = 10 cadrane)
+        // First column starts at K (col 10), second column starts at O (col 14)
+        // Each label block is ~10 rows apart
+        for (let i = 0; i < batchDosare.length && i < 9; i++) {
           const dosar = batchDosare[i];
-          const colIndex = i % 2; // 0 or 1
+          
+          // Determine which column pair (0 or 1) and which row group (0-4)
+          const colPair = i % 2; // 0 = left (K), 1 = right (O)
           const rowGroup = Math.floor(i / 2); // 0-4
           
-          // Starting column (K or O)
-          const startCol = colIndex === 0 ? 10 : 14; // K=10, O=14
+          // Starting column: K=10, O=14
+          const startCol = colPair === 0 ? 10 : 14;
           
-          // Starting row for this group (1, 11, 21, 31, 41)
-          const startRow = 1 + (rowGroup * 10);
+          // Row offsets based on template structure
+          // First label starts at row 1, next at row 10, then 19, 28, 37
+          const baseRow = 1 + (rowGroup * 9);
           
-          // Institutia
-          const instCell = XLSX.utils.encode_cell({ r: startRow - 1, c: startCol });
+          // Institutia (baseRow + 0)
+          const instCell = XLSX.utils.encode_cell({ r: baseRow - 1, c: startCol });
           pageWs[instCell] = { ...pageWs[instCell], v: fondNume, t: 's' };
           
-          // Compartiment
-          const compCell = XLSX.utils.encode_cell({ r: startRow + 1, c: startCol });
+          // Compartiment (baseRow + 2)
+          const compCell = XLSX.utils.encode_cell({ r: baseRow + 1, c: startCol });
           pageWs[compCell] = { ...pageWs[compCell], v: compartimentNume, t: 's' };
           
-          // Indicativ
-          const indCell = XLSX.utils.encode_cell({ r: startRow + 2, c: startCol });
+          // Indicativ (baseRow + 3, col)
+          const indCell = XLSX.utils.encode_cell({ r: baseRow + 2, c: startCol });
           pageWs[indCell] = { ...pageWs[indCell], v: dosar.indicativ_nomenclator || '', t: 's' };
           
-          // Dos. Nr.
-          const dosNrCell = XLSX.utils.encode_cell({ r: startRow + 2, c: startCol + 2 });
+          // Dos. Nr. (baseRow + 3, col+2)
+          const dosNrCell = XLSX.utils.encode_cell({ r: baseRow + 2, c: startCol + 2 });
           pageWs[dosNrCell] = { ...pageWs[dosNrCell], v: dosar.nr_crt, t: 'n' };
           
-          // Denumire pe scurt
-          const denumCell = XLSX.utils.encode_cell({ r: startRow + 3, c: startCol });
+          // Denumire pe scurt (baseRow + 4)
+          const denumCell = XLSX.utils.encode_cell({ r: baseRow + 3, c: startCol });
           pageWs[denumCell] = { ...pageWs[denumCell], v: dosar.continut || '', t: 's' };
           
-          // Date extreme
-          const dateCell = XLSX.utils.encode_cell({ r: startRow + 7, c: startCol });
+          // Date extreme (baseRow + 8, col)
+          const dateCell = XLSX.utils.encode_cell({ r: baseRow + 7, c: startCol });
           pageWs[dateCell] = { ...pageWs[dateCell], v: dosar.date_extreme || '', t: 's' };
           
-          // TP
-          const tpCoverCell = XLSX.utils.encode_cell({ r: startRow + 7, c: startCol + 2 });
-          pageWs[tpCoverCell] = { ...pageWs[tpCoverCell], v: inventarTermen, t: 'n' };
+          // TP (baseRow + 8, col+2)
+          const tpCoverCell = XLSX.utils.encode_cell({ r: baseRow + 7, c: startCol + 2 });
+          pageWs[tpCoverCell] = { ...pageWs[tpCoverCell], v: inventarTermen, t: 's' };
         }
         
         XLSX.utils.book_append_sheet(wb, pageWs, `Pagina ${pageNum}`);
