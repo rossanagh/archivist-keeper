@@ -349,108 +349,113 @@ const Dosare = () => {
       const pageWidth = 210;
       const pageHeight = 297;
       
-      // Spine labels: 8 per page (narrow vertical strips)
-      const spineWidth = 20;
-      const spineHeight = 35;
-      const spineStartX = 8;
-      const spineStartY = 8;
+      // Spine labels - 8 benzi înguste pe pagină
+      const spineWidth = 23;
+      const spineHeight = 34;
+      const spineStartX = 6;
+      const spineStartY = 10;
+      const spineGap = 1;
       
-      // Cover labels: 8 per page (2 columns x 4 rows)
-      const coverStartX = 8;
-      const coverWidth = 97;
-      const coverHeight = 70;
-      const coverGapX = 3;
-      const coverGapY = 3;
+      // Cover labels - 2 coloane x 4 rânduri = 8 cadrane
+      const coverStartX = 6;
+      const coverStartY = 10;
+      const coverWidth = 99;
+      const coverHeight = 68;
+      const coverGapX = 1;
+      const coverGapY = 2;
       
       let dosarIndex = 0;
 
       while (dosarIndex < dosare.length) {
-        // Page 1: Spine labels (8 narrow vertical strips)
-        const spinePageDosare = dosare.slice(dosarIndex, dosarIndex + 8);
+        const batchDosare = dosare.slice(dosarIndex, dosarIndex + 8);
         
-        for (let i = 0; i < spinePageDosare.length; i++) {
-          const dosar = spinePageDosare[i];
-          const y = spineStartY + (i * spineHeight);
+        // PAGINA 1: COTOARE (8 benzi verticale înguste)
+        for (let i = 0; i < batchDosare.length; i++) {
+          const dosar = batchDosare[i];
+          const y = spineStartY + (i * (spineHeight + spineGap));
           
-          // Draw border
+          // Border
           doc.setLineWidth(0.2);
           doc.rect(spineStartX, y, spineWidth, spineHeight);
           
-          // Continut vertical (centered, larger) - exemplu: "Ghiciu Rossana"
-          const continut = (dosar.continut || '').substring(0, 100);
-          doc.setFontSize(10);
-          const centerX = spineStartX + spineWidth / 2;
-          const centerY = y + spineHeight / 2;
-          doc.text(continut, centerX, centerY, { 
-            angle: 90, 
-            maxWidth: spineHeight - 8,
-            align: 'center'
+          // NUMELE VERTICAL (centrat, mare) - exemplu: "Meszaros Monica Etelka"
+          const nume = (dosar.continut || '').substring(0, 80);
+          doc.setFontSize(9);
+          
+          // Scriu textul vertical centrat
+          const textCenterX = spineStartX + (spineWidth / 2);
+          const textCenterY = y + (spineHeight / 2);
+          
+          doc.text(nume, textCenterX + 2, textCenterY, {
+            angle: 90,
+            align: 'center',
+            maxWidth: spineHeight - 10
           });
           
-          // Nr, An, TP pe margini orizontal - exemplu: "1, 2005, ..., 10 ani"
+          // NR. CRT (mic, stânga sus, orizontal)
           doc.setFontSize(7);
-          doc.text(`Nr: ${dosar.nr_crt}`, spineStartX + 1, y + 3);
-          doc.text(`${inventarAn}`, spineStartX + spineWidth - 10, y + 3);
-          doc.text(`${inventarTermen} ani`, spineStartX + 1, y + spineHeight - 1);
+          doc.text(`${dosar.nr_crt}`, spineStartX + 1.5, y + 3.5);
+          
+          // TP (mic, dreapta jos, orizontal)
+          doc.setFontSize(7);
+          doc.text(`${inventarTermen}`, spineStartX + spineWidth - 7, y + spineHeight - 1.5);
         }
 
-        // Page 2: Cover labels (8 cadrane: 2 columns x 4 rows)
-        if (spinePageDosare.length > 0) {
+        // PAGINA 2: CADRANE (2 coloane x 4 rânduri)
+        if (batchDosare.length > 0) {
           doc.addPage();
           
-          for (let i = 0; i < spinePageDosare.length; i++) {
-            const dosar = spinePageDosare[i];
+          for (let i = 0; i < batchDosare.length; i++) {
+            const dosar = batchDosare[i];
             const col = i % 2;
             const row = Math.floor(i / 2);
             
             const x = coverStartX + (col * (coverWidth + coverGapX));
-            const y = spineStartY + (row * (coverHeight + coverGapY));
+            const y = coverStartY + (row * (coverHeight + coverGapY));
             
-            // Draw border - trebuie sa fie perfect incadrat
+            // Border cadran
             doc.setLineWidth(0.2);
             doc.rect(x, y, coverWidth, coverHeight);
             
-            // Content with padding
-            const padding = 2.5;
-            doc.setFontSize(8);
-            let yPos = y + padding + 3.5;
+            // Content cu padding interior
+            const pad = 2;
+            doc.setFontSize(7.5);
+            let yPos = y + pad + 3;
             
             // Institutia
-            const fondText = fondNume.length > 40 ? fondNume.substring(0, 37) + '...' : fondNume;
-            doc.text(`Institutia: ${fondText}`, x + padding, yPos);
-            yPos += 4.5;
+            const instText = fondNume.length > 45 ? fondNume.substring(0, 42) + '...' : fondNume;
+            doc.text(`Institutia: ${instText}`, x + pad, yPos);
+            yPos += 4;
             
-            // Compartiment - trebuie sa se incadreze perfect
-            const compartimentText = compartimentNume.length > 40 
-              ? compartimentNume.substring(0, 37) + '...' 
+            // Compartiment
+            const compText = compartimentNume.length > 45 
+              ? compartimentNume.substring(0, 42) + '...' 
               : compartimentNume;
-            doc.text(`Compartiment: ${compartimentText}`, x + padding, yPos);
-            yPos += 4.5;
+            doc.text(`Compartiment: ${compText}`, x + pad, yPos);
+            yPos += 4;
             
-            // Indicativ and Dos. Nr.
-            doc.text(`Indicativ: ${dosar.indicativ_nomenclator || ''}`, x + padding, yPos);
-            doc.text(`Dos. Nr.: ${dosar.nr_crt}`, x + coverWidth / 2, yPos);
-            yPos += 4.5;
+            // Indicativ și Dos. Nr. pe aceeași linie
+            doc.text(`Indicativ: ${dosar.indicativ_nomenclator || ''}`, x + pad, yPos);
+            doc.text(`Dos. Nr.: ${dosar.nr_crt}`, x + coverWidth / 2 + 2, yPos);
+            yPos += 4;
             
-            // Numele/Denumire
+            // Numele complet (mai multe linii dacă e necesar)
+            doc.setFontSize(7);
+            const numeComplet = dosar.continut || '';
+            const maxW = coverWidth - (2 * pad);
+            const lines = doc.splitTextToSize(numeComplet, maxW);
+            doc.text(lines.slice(0, 5), x + pad, yPos);
+            
+            // Date extreme și TP jos
+            yPos = y + coverHeight - pad - 2.5;
             doc.setFontSize(7.5);
-            const denumire = dosar.continut || '';
-            const maxWidth = coverWidth - (2 * padding);
-            const splitText = doc.splitTextToSize(denumire, maxWidth);
-            const linesToShow = splitText.slice(0, 5);
-            doc.text(linesToShow, x + padding, yPos);
-            
-            // Date extreme and TP at bottom - perfect fit
-            yPos = y + coverHeight - padding - 3;
-            doc.setFontSize(8);
-            doc.text(`Date extreme: ${dosar.date_extreme || ''}`, x + padding, yPos);
-            doc.text(`TP: ${inventarTermen}`, x + coverWidth - padding - 18, yPos);
+            doc.text(`Date extreme: ${dosar.date_extreme || ''}`, x + pad, yPos);
+            doc.text(`TP: ${inventarTermen}`, x + coverWidth - pad - 15, yPos);
           }
         }
 
         dosarIndex += 8;
         
-        // Add new page for next batch if needed
         if (dosarIndex < dosare.length) {
           doc.addPage();
         }
