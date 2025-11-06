@@ -341,58 +341,63 @@ const Dosare = () => {
     try {
       const { jsPDF } = await import('jspdf');
       const doc = new jsPDF({
-        orientation: 'landscape',
+        orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
 
-      const pageWidth = 297;
-      const pageHeight = 210;
+      const pageWidth = 210;
+      const pageHeight = 297;
       
-      // Spine labels: 8 columns per page
-      const spineWidth = 35;
+      // Spine labels: 8 rows per page
+      const spineWidth = 25;
+      const spineHeight = 35;
       const spineStartX = 5;
-      const spineStartY = 10;
-      const spineHeight = 190;
+      const spineStartY = 5;
       
       // Cover labels: 8 per page (2 columns x 4 rows)
-      const coverStartX = 10;
-      const coverWidth = 135;
-      const coverHeight = 45;
+      const coverStartX = 5;
+      const coverWidth = 100;
+      const coverHeight = 70;
       const coverGapX = 5;
       const coverGapY = 5;
       
       let dosarIndex = 0;
 
       while (dosarIndex < dosare.length) {
-        // Page 1: Spine labels (8 columns)
+        // Page 1: Spine labels (8 rows)
         const spinePageDosare = dosare.slice(dosarIndex, dosarIndex + 8);
         
         for (let i = 0; i < spinePageDosare.length; i++) {
           const dosar = spinePageDosare[i];
-          const x = spineStartX + (i * spineWidth);
+          const y = spineStartY + (i * spineHeight);
           
           // Draw border
           doc.setLineWidth(0.3);
-          doc.rect(x, spineStartY, spineWidth, spineHeight);
+          doc.rect(spineStartX, y, spineWidth, spineHeight);
           
-          // Nr. Crt (horizontal, top)
-          doc.setFontSize(10);
-          doc.text(`Nr: ${dosar.nr_crt}`, x + spineWidth / 2, spineStartY + 10, { align: 'center' });
+          // Nr. Crt (horizontal, left)
+          doc.setFontSize(8);
+          doc.text(`Nr: ${dosar.nr_crt}`, spineStartX + 2, y + 5);
+          
+          // An inventar (horizontal, left)
+          doc.setFontSize(8);
+          doc.text(`An: ${inventarAn}`, spineStartX + 2, y + 10);
           
           // Continut (vertical, centered, larger)
-          const continut = (dosar.continut || '').substring(0, 180);
-          doc.setFontSize(9);
-          const centerX = x + spineWidth / 2;
-          doc.text(continut, centerX, spineStartY + 30, { 
+          const continut = (dosar.continut || '').substring(0, 120);
+          doc.setFontSize(11);
+          const centerX = spineStartX + spineWidth / 2;
+          const centerY = y + spineHeight / 2;
+          doc.text(continut, centerX + 3, centerY, { 
             angle: 90, 
-            maxWidth: 150,
+            maxWidth: spineHeight - 10,
             align: 'center'
           });
           
-          // Termen pastrare (horizontal, bottom)
-          doc.setFontSize(10);
-          doc.text(`TP: ${inventarTermen}`, x + spineWidth / 2, spineStartY + spineHeight - 5, { align: 'center' });
+          // TP (horizontal, bottom right)
+          doc.setFontSize(8);
+          doc.text(`TP: ${inventarTermen}`, spineStartX + 2, y + spineHeight - 2);
         }
 
         // Page 2: Cover labels (8 cadrane: 2 columns x 4 rows)
@@ -411,35 +416,42 @@ const Dosare = () => {
             doc.setLineWidth(0.3);
             doc.rect(x, y, coverWidth, coverHeight);
             
-            // Content
-            doc.setFontSize(9);
-            let yPos = y + 6;
-            
-            doc.text(`Institutia: ${fondNume}`, x + 3, yPos);
-            yPos += 6;
-            
-            // Truncate compartiment name if too long to fit
-            const compartimentText = compartimentNume.length > 30 
-              ? compartimentNume.substring(0, 27) + '...' 
-              : compartimentNume;
-            doc.text(`Compartiment: ${compartimentText}`, x + 3, yPos);
-            yPos += 6;
-            
-            doc.text(`Indicativ: ${dosar.indicativ_nomenclator || ''}`, x + 3, yPos);
-            doc.text(`Dos. Nr.: ${dosar.nr_crt}`, x + 70, yPos);
-            yPos += 6;
-            
-            // Denumire (wrapped)
+            // Content with padding
+            const padding = 3;
             doc.setFontSize(8);
+            let yPos = y + padding + 4;
+            
+            // Institutia (truncate to fit)
+            const fondText = fondNume.length > 32 ? fondNume.substring(0, 29) + '...' : fondNume;
+            doc.text(`Institutia: ${fondText}`, x + padding, yPos);
+            yPos += 5;
+            
+            // Compartiment (truncate to fit)
+            const compartimentText = compartimentNume.length > 32 
+              ? compartimentNume.substring(0, 29) + '...' 
+              : compartimentNume;
+            doc.text(`Compartiment: ${compartimentText}`, x + padding, yPos);
+            yPos += 5;
+            
+            // Indicativ and Dos. Nr. on same line
+            doc.text(`Indicativ: ${dosar.indicativ_nomenclator || ''}`, x + padding, yPos);
+            doc.text(`Dos. Nr.: ${dosar.nr_crt}`, x + coverWidth / 2 + 5, yPos);
+            yPos += 5;
+            
+            // Denumire (wrapped to fit within cadran)
+            doc.setFontSize(7);
             const denumire = dosar.continut || '';
-            const splitText = doc.splitTextToSize(denumire, coverWidth - 6);
-            doc.text(splitText.slice(0, 2), x + 3, yPos);
+            const maxWidth = coverWidth - (2 * padding);
+            const splitText = doc.splitTextToSize(denumire, maxWidth);
+            // Show max 4 lines to fit within cadran
+            const linesToShow = splitText.slice(0, 4);
+            doc.text(linesToShow, x + padding, yPos);
             
             // Date extreme and TP at bottom
-            yPos = y + coverHeight - 6;
-            doc.setFontSize(9);
-            doc.text(`Date extreme: ${dosar.date_extreme || ''}`, x + 3, yPos);
-            doc.text(`TP: ${inventarTermen}`, x + coverWidth - 25, yPos);
+            yPos = y + coverHeight - padding - 4;
+            doc.setFontSize(8);
+            doc.text(`Date extreme: ${dosar.date_extreme || ''}`, x + padding, yPos);
+            doc.text(`TP: ${inventarTermen}`, x + coverWidth - padding - 20, yPos);
           }
         }
 
