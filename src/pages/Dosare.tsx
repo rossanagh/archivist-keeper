@@ -339,163 +339,74 @@ const Dosare = () => {
 
   const handleDownloadLabels = async () => {
     try {
-      // Fetch template
-      const templateResponse = await fetch('/src/assets/etichete-template.xlsx');
-      const templateBuffer = await templateResponse.arrayBuffer();
-      
-      // Load template workbook with all formatting
-      const templateWorkbook = XLSX.read(templateBuffer, { 
-        type: 'array', 
-        cellStyles: true,
-        cellDates: true,
-        cellNF: true
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'cm',
+        format: 'a4'
       });
+
+      const pageWidth = 29.7; // A4 landscape width in cm
+      const pageHeight = 21; // A4 landscape height in cm
+      const labelWidth = 2; // 2 cm width for each spine
+      const labelsPerPage = Math.floor(pageWidth / labelWidth); // 14 labels per page
       
-      // Process dosare in batches of 9 (template has 9 spine labels per page: columns B-J)
-      let dosarIndex = 0;
-      const dosarePerPage = 9;
+      let labelIndex = 0;
       
-      // Create a new workbook with multiple sheets (one per page)
-      const wb = XLSX.utils.book_new();
-      let pageNum = 0;
-      
-      while (dosarIndex < dosare.length) {
-        pageNum++;
-        const batchDosare = dosare.slice(dosarIndex, dosarIndex + dosarePerPage);
+      for (const dosar of dosare) {
+        const pageIndex = Math.floor(labelIndex / labelsPerPage);
+        const positionInPage = labelIndex % labelsPerPage;
         
-        // Deep clone the template worksheet
-        const templateSheet = templateWorkbook.Sheets[templateWorkbook.SheetNames[0]];
-        const pageWs = {};
-        
-        // Deep copy all cells and properties
-        for (const key in templateSheet) {
-          if (key[0] === '!') {
-            // Copy special properties
-            if (key === '!merges') {
-              pageWs[key] = templateSheet[key] ? JSON.parse(JSON.stringify(templateSheet[key])) : undefined;
-            } else if (key === '!cols' || key === '!rows') {
-              pageWs[key] = templateSheet[key] ? [...templateSheet[key]] : undefined;
-            } else {
-              pageWs[key] = templateSheet[key];
-            }
-          } else {
-            // Deep copy cell with all its properties
-            pageWs[key] = JSON.parse(JSON.stringify(templateSheet[key]));
-          }
+        // Add new page if needed
+        if (labelIndex > 0 && positionInPage === 0) {
+          doc.addPage();
         }
         
-        // Fill in SPINE LABELS (columns B-J, 9 cotoare) based on CSV structure
-        // Row 2 = Nr.Crt values (1,2,3...)
-        // Row 4 = An values (2004, 2004...)
-        // Row 5 = Continut (Ghiciu Rossana, Tocea Gabriel...)
-        // Row 52 = TP values (10 ani, 10 ani...)
-        for (let i = 0; i < batchDosare.length && i < 9; i++) {
-          const dosar = batchDosare[i];
-          const colLetter = String.fromCharCode(66 + i); // B-J (66 is 'B')
-          
-          // Nr. Crt value (row 2)
-          const nrCrtCell = `${colLetter}2`;
-          if (pageWs[nrCrtCell]) {
-            pageWs[nrCrtCell].v = dosar.nr_crt;
-            pageWs[nrCrtCell].t = 'n';
-          }
-          
-          // An value (row 4)
-          const anCell = `${colLetter}4`;
-          if (pageWs[anCell]) {
-            pageWs[anCell].v = inventarAn;
-            pageWs[anCell].t = 'n';
-          }
-          
-          // Continut pe scurt (row 5)
-          const continutCell = `${colLetter}5`;
-          if (pageWs[continutCell]) {
-            pageWs[continutCell].v = dosar.continut || '';
-            pageWs[continutCell].t = 's';
-          }
-          
-          // TP value (row 52 based on CSV)
-          const tpCell = `${colLetter}52`;
-          if (pageWs[tpCell]) {
-            pageWs[tpCell].v = inventarTermen;
-            pageWs[tpCell].t = 's';
-          }
-        }
+        const xPos = positionInPage * labelWidth;
         
-        // Fill in COVER LABELS based on CSV structure
-        // Looking at CSV: First cadran starts at column K (10), row 1
-        // Pattern shows labels in 2 columns (K-N and O-R), 5 rows down
-        for (let i = 0; i < batchDosare.length && i < 9; i++) {
-          const dosar = batchDosare[i];
-          
-          // Determine which column group (left or right) and which vertical position
-          const colGroup = i % 2; // 0 = left columns K-N, 1 = right columns O-R
-          const rowOffset = Math.floor(i / 2); // 0-4 vertical positions
-          
-          // Starting column: K=10 (left group), O=14 (right group)
-          const baseCol = colGroup === 0 ? 10 : 14;
-          
-          // Starting row: 1, 10, 19, 28, 37 (every 9 rows based on CSV pattern)
-          const baseRow = 1 + (rowOffset * 9);
-          
-          // Institutia (row baseRow, col K or O)
-          const instCell = XLSX.utils.encode_cell({ r: baseRow - 1, c: baseCol });
-          if (pageWs[instCell]) {
-            pageWs[instCell].v = fondNume;
-            pageWs[instCell].t = 's';
-          }
-          
-          // Compartiment (row baseRow+2, col K or O)
-          const compCell = XLSX.utils.encode_cell({ r: baseRow + 1, c: baseCol });
-          if (pageWs[compCell]) {
-            pageWs[compCell].v = compartimentNume;
-            pageWs[compCell].t = 's';
-          }
-          
-          // Indicativ (row baseRow+3, col K or O)
-          const indCell = XLSX.utils.encode_cell({ r: baseRow + 2, c: baseCol });
-          if (pageWs[indCell]) {
-            pageWs[indCell].v = dosar.indicativ_nomenclator || '';
-            pageWs[indCell].t = 's';
-          }
-          
-          // Dos. Nr. (row baseRow+3, col M or Q - offset +2 from base)
-          const dosNrCell = XLSX.utils.encode_cell({ r: baseRow + 2, c: baseCol + 2 });
-          if (pageWs[dosNrCell]) {
-            pageWs[dosNrCell].v = dosar.nr_crt;
-            pageWs[dosNrCell].t = 'n';
-          }
-          
-          // Denumire pe scurt (row baseRow+4, col K or O)
-          const denumCell = XLSX.utils.encode_cell({ r: baseRow + 3, c: baseCol });
-          if (pageWs[denumCell]) {
-            pageWs[denumCell].v = dosar.continut || '';
-            pageWs[denumCell].t = 's';
-          }
-          
-          // Date extreme (row baseRow+8, col K or O)
-          const dateCell = XLSX.utils.encode_cell({ r: baseRow + 7, c: baseCol });
-          if (pageWs[dateCell]) {
-            pageWs[dateCell].v = dosar.date_extreme || '';
-            pageWs[dateCell].t = 's';
-          }
-          
-          // TP (row baseRow+8, col M or Q - offset +2 from base)
-          const tpCoverCell = XLSX.utils.encode_cell({ r: baseRow + 7, c: baseCol + 2 });
-          if (pageWs[tpCoverCell]) {
-            pageWs[tpCoverCell].v = inventarTermen;
-            pageWs[tpCoverCell].t = 's';
-          }
-        }
+        // Draw border for each spine
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(xPos, 0, labelWidth, pageHeight);
         
-        XLSX.utils.book_append_sheet(wb, pageWs, `Pagina ${pageNum}`);
-        dosarIndex += dosarePerPage;
+        // Nr. Crt - top, horizontal, small
+        doc.setFontSize(10);
+        doc.text(dosar.nr_crt.toString(), xPos + labelWidth / 2, 1, { 
+          align: 'center' 
+        });
+        
+        // An - below nr crt, horizontal, small
+        doc.setFontSize(10);
+        doc.text(inventarAn?.toString() || '', xPos + labelWidth / 2, 2, { 
+          align: 'center' 
+        });
+        
+        // Continut - middle, VERTICAL (rotated 90 degrees), larger
+        doc.setFontSize(12);
+        const content = dosar.continut.length > 80 
+          ? dosar.continut.substring(0, 77) + '...' 
+          : dosar.continut;
+        
+        // Rotate text 90 degrees counterclockwise for vertical text
+        doc.text(content, xPos + labelWidth / 2 + 0.3, pageHeight - 3, { 
+          angle: 90,
+          align: 'left',
+          maxWidth: pageHeight - 6
+        });
+        
+        // Termen pastrare - bottom, horizontal, small
+        doc.setFontSize(9);
+        doc.text(inventarTermen || '', xPos + labelWidth / 2, pageHeight - 0.8, { 
+          align: 'center' 
+        });
+        
+        labelIndex++;
       }
       
-      // Write file
-      XLSX.writeFile(wb, `Etichete_Inventar_${inventarAn}.xlsx`);
-
-      // Log
+      // Save the PDF
+      const fileName = `Cotoare_${fondNume || 'fond'}_${compartimentNume || 'compartiment'}_${inventarAn || 'an'}.pdf`;
+      doc.save(fileName);
+      
+      // Log audit
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase
@@ -518,17 +429,17 @@ const Dosare = () => {
           },
         });
       }
-
+      
       toast({
-        title: "Etichete descărcate",
-        description: `${dosare.length} etichete generate în format Excel`,
+        title: "Cotoare generate",
+        description: `${dosare.length} cotoare generate în format PDF`,
       });
     } catch (error) {
-      console.error("Error generating labels:", error);
+      console.error("Error generating spines:", error);
       toast({
         variant: "destructive",
         title: "Eroare la generare",
-        description: "Nu s-au putut genera etichetele Excel",
+        description: "Nu s-au putut genera cotoarele PDF",
       });
     }
   };
