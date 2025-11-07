@@ -347,12 +347,12 @@ const Dosare = () => {
       });
 
       // Helper function to fit text in available width
-      const fitText = (text: string, maxWidth: number, startFontSize: number, minFontSize: number = 6) => {
+      const fitText = (text: string, maxWidth: number, startFontSize: number, minFontSize: number = 4) => {
         let fontSize = startFontSize;
         doc.setFontSize(fontSize);
         
         while (doc.getTextWidth(text) > maxWidth && fontSize > minFontSize) {
-          fontSize -= 0.5;
+          fontSize -= 0.3; // Reduce more aggressively
           doc.setFontSize(fontSize);
         }
         
