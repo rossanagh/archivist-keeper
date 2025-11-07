@@ -387,9 +387,9 @@ const Dosare = () => {
           : dosar.continut;
         
         // Rotate text 90 degrees counterclockwise for vertical text
-        doc.text(content, xPos + labelWidth / 2 + 0.3, pageHeight - 3, { 
+        doc.text(content, xPos + labelWidth / 2 + 0.3, pageHeight / 2, { 
           angle: 90,
-          align: 'left',
+          align: 'center',
           maxWidth: pageHeight - 6
         });
         
