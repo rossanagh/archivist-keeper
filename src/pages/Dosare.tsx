@@ -437,12 +437,16 @@ const Dosare = () => {
         // Row 1: Fond
         doc.line(xPos, yPos + cellHeight, xPos + docLabelWidth, yPos + cellHeight);
         doc.setFontSize(10);
-        doc.text(fondNume, xPos + 0.2, yPos + cellHeight - 0.2);
+        doc.text(fondNume, xPos + 0.2, yPos + cellHeight - 0.2, {
+          maxWidth: docLabelWidth - 0.4
+        });
         
         // Row 2: Compartiment
         doc.line(xPos, yPos + cellHeight * 2, xPos + docLabelWidth, yPos + cellHeight * 2);
         doc.setFontSize(10);
-        doc.text(compartimentNume, xPos + 0.2, yPos + cellHeight * 2 - 0.2);
+        doc.text(compartimentNume, xPos + 0.2, yPos + cellHeight * 2 - 0.2, {
+          maxWidth: docLabelWidth - 0.4
+        });
         
         // Row 3: Indicativ | Nr Crt (split in two)
         doc.line(xPos, yPos + cellHeight * 3, xPos + docLabelWidth, yPos + cellHeight * 3);
