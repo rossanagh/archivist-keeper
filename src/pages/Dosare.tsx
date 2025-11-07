@@ -403,8 +403,75 @@ const Dosare = () => {
         labelIndex++;
       }
       
+      // Add document labels (10cm width) after spines
+      doc.addPage();
+      
+      const docLabelWidth = 10; // 10 cm width
+      const docLabelHeight = 5; // Height for each label
+      const labelsPerRow = 2; // 2 labels per row (20cm total, leaving margin)
+      const marginX = 0.5;
+      const marginY = 1;
+      
+      for (let i = 0; i < dosare.length; i++) {
+        const dosar = dosare[i];
+        const row = Math.floor(i / labelsPerRow);
+        const col = i % labelsPerRow;
+        
+        // Add new page if needed (4 labels per page max - 2x2)
+        if (i > 0 && i % 4 === 0) {
+          doc.addPage();
+        }
+        
+        const adjustedRow = row % 2; // Reset row for each page
+        const xPos = marginX + col * (docLabelWidth + 0.5);
+        const yPos = marginY + adjustedRow * (docLabelHeight + 0.5);
+        
+        // Draw outer border
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.03);
+        doc.rect(xPos, yPos, docLabelWidth, docLabelHeight);
+        
+        // Draw table structure
+        const cellHeight = docLabelHeight / 5;
+        
+        // Row 1: Fond
+        doc.line(xPos, yPos + cellHeight, xPos + docLabelWidth, yPos + cellHeight);
+        doc.setFontSize(10);
+        doc.text(fondNume, xPos + 0.2, yPos + cellHeight - 0.2);
+        
+        // Row 2: Compartiment
+        doc.line(xPos, yPos + cellHeight * 2, xPos + docLabelWidth, yPos + cellHeight * 2);
+        doc.setFontSize(10);
+        doc.text(compartimentNume, xPos + 0.2, yPos + cellHeight * 2 - 0.2);
+        
+        // Row 3: Indicativ | Nr Crt (split in two)
+        doc.line(xPos, yPos + cellHeight * 3, xPos + docLabelWidth, yPos + cellHeight * 3);
+        const midX = xPos + docLabelWidth / 2;
+        doc.line(midX, yPos + cellHeight * 2, midX, yPos + cellHeight * 3);
+        doc.setFontSize(10);
+        doc.text(dosar.indicativ_nomenclator, xPos + 0.2, yPos + cellHeight * 3 - 0.2);
+        doc.text(dosar.nr_crt.toString(), midX + 0.2, yPos + cellHeight * 3 - 0.2);
+        
+        // Row 4: Continut
+        doc.line(xPos, yPos + cellHeight * 4, xPos + docLabelWidth, yPos + cellHeight * 4);
+        doc.setFontSize(9);
+        const continutText = dosar.continut.length > 60 
+          ? dosar.continut.substring(0, 57) + '...' 
+          : dosar.continut;
+        doc.text(continutText, xPos + 0.2, yPos + cellHeight * 4 - 0.2, {
+          maxWidth: docLabelWidth - 0.4
+        });
+        
+        // Row 5: Date extreme | Termen pastrare (split in two)
+        doc.line(midX, yPos + cellHeight * 4, midX, yPos + cellHeight * 5);
+        doc.setFontSize(9);
+        doc.text(dosar.date_extreme, xPos + 0.2, yPos + cellHeight * 5 - 0.2);
+        const termenText = inventarTermen === 'permanent' ? 'permanent' : `${inventarTermen} ani`;
+        doc.text(termenText, midX + 0.2, yPos + cellHeight * 5 - 0.2);
+      }
+      
       // Save the PDF
-      const fileName = `Cotoare_${fondNume || 'fond'}_${compartimentNume || 'compartiment'}_${inventarAn || 'an'}.pdf`;
+      const fileName = `Etichete_${fondNume || 'fond'}_${compartimentNume || 'compartiment'}_${inventarAn || 'an'}.pdf`;
       doc.save(fileName);
       
       // Log audit
@@ -432,8 +499,8 @@ const Dosare = () => {
       }
       
       toast({
-        title: "Cotoare generate",
-        description: `${dosare.length} cotoare generate în format PDF`,
+        title: "Etichete generate",
+        description: `${dosare.length} cotoare și etichete generate în format PDF`,
       });
     } catch (error) {
       console.error("Error generating spines:", error);
