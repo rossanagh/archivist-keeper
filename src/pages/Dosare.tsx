@@ -436,14 +436,14 @@ const Dosare = () => {
         
         // Row 1: Fond
         doc.line(xPos, yPos + cellHeight, xPos + docLabelWidth, yPos + cellHeight);
-        doc.setFontSize(10);
+        doc.setFontSize(8);
         doc.text(fondNume, xPos + 0.2, yPos + cellHeight - 0.2, {
           maxWidth: docLabelWidth - 0.4
         });
         
         // Row 2: Compartiment
         doc.line(xPos, yPos + cellHeight * 2, xPos + docLabelWidth, yPos + cellHeight * 2);
-        doc.setFontSize(10);
+        doc.setFontSize(8);
         doc.text(compartimentNume, xPos + 0.2, yPos + cellHeight * 2 - 0.2, {
           maxWidth: docLabelWidth - 0.4
         });
@@ -452,13 +452,13 @@ const Dosare = () => {
         doc.line(xPos, yPos + cellHeight * 3, xPos + docLabelWidth, yPos + cellHeight * 3);
         const midX = xPos + docLabelWidth / 2;
         doc.line(midX, yPos + cellHeight * 2, midX, yPos + cellHeight * 3);
-        doc.setFontSize(10);
+        doc.setFontSize(8);
         doc.text(dosar.indicativ_nomenclator, xPos + 0.2, yPos + cellHeight * 3 - 0.2);
         doc.text(dosar.nr_crt.toString(), midX + 0.2, yPos + cellHeight * 3 - 0.2);
         
         // Row 4: Continut
         doc.line(xPos, yPos + cellHeight * 4, xPos + docLabelWidth, yPos + cellHeight * 4);
-        doc.setFontSize(9);
+        doc.setFontSize(7);
         const continutText = dosar.continut.length > 60 
           ? dosar.continut.substring(0, 57) + '...' 
           : dosar.continut;
@@ -468,7 +468,7 @@ const Dosare = () => {
         
         // Row 5: Date extreme | Termen pastrare (split in two)
         doc.line(midX, yPos + cellHeight * 4, midX, yPos + cellHeight * 5);
-        doc.setFontSize(9);
+        doc.setFontSize(7);
         doc.text(dosar.date_extreme, xPos + 0.2, yPos + cellHeight * 5 - 0.2);
         const termenText = inventarTermen === 'permanent' ? 'permanent' : `${inventarTermen} ani`;
         doc.text(termenText, midX + 0.2, yPos + cellHeight * 5 - 0.2);
