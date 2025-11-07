@@ -449,44 +449,38 @@ const Dosare = () => {
         
         // Row 1: Fond
         doc.line(xPos, yPos + cellHeight, xPos + docLabelWidth, yPos + cellHeight);
-        fitText(fondNume, docLabelWidth - 0.4, 8);
-        doc.text(fondNume, xPos + 0.2, yPos + cellHeight - 0.2, {
-          maxWidth: docLabelWidth - 0.4
-        });
+        doc.setFontSize(8);
+        const fondLines = doc.splitTextToSize(fondNume, docLabelWidth - 0.4);
+        doc.text(fondLines, xPos + 0.2, yPos + 0.4);
         
         // Row 2: Compartiment
         doc.line(xPos, yPos + cellHeight * 2, xPos + docLabelWidth, yPos + cellHeight * 2);
-        fitText(compartimentNume, docLabelWidth - 0.4, 8);
-        doc.text(compartimentNume, xPos + 0.2, yPos + cellHeight * 2 - 0.2, {
-          maxWidth: docLabelWidth - 0.4
-        });
+        doc.setFontSize(8);
+        const compartimentLines = doc.splitTextToSize(compartimentNume, docLabelWidth - 0.4);
+        doc.text(compartimentLines, xPos + 0.2, yPos + cellHeight + 0.4);
         
         // Row 3: Indicativ | Nr Crt (split in two)
         doc.line(xPos, yPos + cellHeight * 3, xPos + docLabelWidth, yPos + cellHeight * 3);
         const midX = xPos + docLabelWidth / 2;
         doc.line(midX, yPos + cellHeight * 2, midX, yPos + cellHeight * 3);
-        fitText(dosar.indicativ_nomenclator, (docLabelWidth / 2) - 0.4, 8);
-        doc.text(dosar.indicativ_nomenclator, xPos + 0.2, yPos + cellHeight * 3 - 0.2);
         doc.setFontSize(8);
-        doc.text(dosar.nr_crt.toString(), midX + 0.2, yPos + cellHeight * 3 - 0.2);
+        const indicativLines = doc.splitTextToSize(dosar.indicativ_nomenclator, (docLabelWidth / 2) - 0.4);
+        doc.text(indicativLines, xPos + 0.2, yPos + cellHeight * 2 + 0.4);
+        doc.text(dosar.nr_crt.toString(), midX + 0.2, yPos + cellHeight * 2 + 0.4);
         
         // Row 4: Continut
         doc.line(xPos, yPos + cellHeight * 4, xPos + docLabelWidth, yPos + cellHeight * 4);
-        const continutText = dosar.continut.length > 60 
-          ? dosar.continut.substring(0, 57) + '...' 
-          : dosar.continut;
-        fitText(continutText, docLabelWidth - 0.4, 7);
-        doc.text(continutText, xPos + 0.2, yPos + cellHeight * 4 - 0.2, {
-          maxWidth: docLabelWidth - 0.4
-        });
+        doc.setFontSize(7);
+        const continutLines = doc.splitTextToSize(dosar.continut, docLabelWidth - 0.4);
+        doc.text(continutLines.slice(0, 2), xPos + 0.2, yPos + cellHeight * 3 + 0.3);
         
         // Row 5: Date extreme | Termen pastrare (split in two)
         doc.line(midX, yPos + cellHeight * 4, midX, yPos + cellHeight * 5);
-        fitText(dosar.date_extreme, (docLabelWidth / 2) - 0.4, 7);
-        doc.text(dosar.date_extreme, xPos + 0.2, yPos + cellHeight * 5 - 0.2);
-        const termenText = inventarTermen === 'permanent' ? 'permanent' : `${inventarTermen} ani`;
         doc.setFontSize(7);
-        doc.text(termenText, midX + 0.2, yPos + cellHeight * 5 - 0.2);
+        const dateLines = doc.splitTextToSize(dosar.date_extreme, (docLabelWidth / 2) - 0.4);
+        doc.text(dateLines, xPos + 0.2, yPos + cellHeight * 4 + 0.3);
+        const termenText = inventarTermen === 'permanent' ? 'permanent' : `${inventarTermen} ani`;
+        doc.text(termenText, midX + 0.2, yPos + cellHeight * 4 + 0.3);
       }
       
       // Save the PDF
