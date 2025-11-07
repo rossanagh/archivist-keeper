@@ -395,7 +395,8 @@ const Dosare = () => {
         
         // Termen pastrare - bottom, horizontal, small
         doc.setFontSize(9);
-        doc.text(inventarTermen || '', xPos + labelWidth / 2, pageHeight - 0.8, { 
+        const termenText = inventarTermen === 'permanent' ? 'permanent' : `${inventarTermen} ani`;
+        doc.text(termenText || '', xPos + labelWidth / 2, pageHeight - 0.8, { 
           align: 'center' 
         });
         
