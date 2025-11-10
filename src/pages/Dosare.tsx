@@ -449,14 +449,12 @@ const Dosare = () => {
         
         // Row 1: Fond
         doc.line(xPos, yPos + cellHeight, xPos + docLabelWidth, yPos + cellHeight);
-        doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
         const fondLines = doc.splitTextToSize(fondNume, docLabelWidth - 0.4);
         doc.text(fondLines.slice(0, 2), xPos + 0.2, yPos + 0.3, { lineHeightFactor: 1.2 });
         
         // Row 2: Compartiment
         doc.line(xPos, yPos + cellHeight * 2, xPos + docLabelWidth, yPos + cellHeight * 2);
-        doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
         const compartimentLines = doc.splitTextToSize(compartimentNume, docLabelWidth - 0.4);
         doc.text(compartimentLines.slice(0, 2), xPos + 0.2, yPos + cellHeight + 0.3, { lineHeightFactor: 1.2 });
