@@ -451,13 +451,13 @@ const Dosare = () => {
         doc.line(xPos, yPos + cellHeight, xPos + docLabelWidth, yPos + cellHeight);
         doc.setFontSize(8);
         const fondLines = doc.splitTextToSize(fondNume, docLabelWidth - 0.4);
-        doc.text(fondLines, xPos + 0.2, yPos + 0.4);
+        doc.text(fondLines.slice(0, 2), xPos + 0.2, yPos + 0.35, { lineHeightFactor: 1.2 });
         
         // Row 2: Compartiment
         doc.line(xPos, yPos + cellHeight * 2, xPos + docLabelWidth, yPos + cellHeight * 2);
         doc.setFontSize(8);
         const compartimentLines = doc.splitTextToSize(compartimentNume, docLabelWidth - 0.4);
-        doc.text(compartimentLines, xPos + 0.2, yPos + cellHeight + 0.4);
+        doc.text(compartimentLines.slice(0, 2), xPos + 0.2, yPos + cellHeight + 0.35, { lineHeightFactor: 1.2 });
         
         // Row 3: Indicativ | Nr Crt (split in two)
         doc.line(xPos, yPos + cellHeight * 3, xPos + docLabelWidth, yPos + cellHeight * 3);
@@ -465,20 +465,20 @@ const Dosare = () => {
         doc.line(midX, yPos + cellHeight * 2, midX, yPos + cellHeight * 3);
         doc.setFontSize(8);
         const indicativLines = doc.splitTextToSize(dosar.indicativ_nomenclator, (docLabelWidth / 2) - 0.4);
-        doc.text(indicativLines, xPos + 0.2, yPos + cellHeight * 2 + 0.4);
-        doc.text(dosar.nr_crt.toString(), midX + 0.2, yPos + cellHeight * 2 + 0.4);
+        doc.text(indicativLines.slice(0, 2), xPos + 0.2, yPos + cellHeight * 2 + 0.35, { lineHeightFactor: 1.2 });
+        doc.text(dosar.nr_crt.toString(), midX + 0.2, yPos + cellHeight * 2 + 0.35);
         
         // Row 4: Continut
         doc.line(xPos, yPos + cellHeight * 4, xPos + docLabelWidth, yPos + cellHeight * 4);
         doc.setFontSize(7);
         const continutLines = doc.splitTextToSize(dosar.continut, docLabelWidth - 0.4);
-        doc.text(continutLines.slice(0, 2), xPos + 0.2, yPos + cellHeight * 3 + 0.3);
+        doc.text(continutLines.slice(0, 2), xPos + 0.2, yPos + cellHeight * 3 + 0.3, { lineHeightFactor: 1.2 });
         
         // Row 5: Date extreme | Termen pastrare (split in two)
         doc.line(midX, yPos + cellHeight * 4, midX, yPos + cellHeight * 5);
         doc.setFontSize(7);
         const dateLines = doc.splitTextToSize(dosar.date_extreme, (docLabelWidth / 2) - 0.4);
-        doc.text(dateLines, xPos + 0.2, yPos + cellHeight * 4 + 0.3);
+        doc.text(dateLines.slice(0, 2), xPos + 0.2, yPos + cellHeight * 4 + 0.3, { lineHeightFactor: 1.2 });
         const termenText = inventarTermen === 'permanent' ? 'permanent' : `${inventarTermen} ani`;
         doc.text(termenText, midX + 0.2, yPos + cellHeight * 4 + 0.3);
       }
