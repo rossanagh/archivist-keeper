@@ -59,6 +59,45 @@ const Dosare = () => {
     };
   }, [inventarId]);
 
+  // Inactivity timeout - 15 minutes
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    let lastActivity = Date.now();
+    const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+    const updateActivity = () => {
+      lastActivity = Date.now();
+    };
+
+    // Listen for user activity
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      document.addEventListener(event, updateActivity);
+    });
+
+    // Check inactivity every minute
+    const checkInterval = setInterval(() => {
+      const timeSinceLastActivity = Date.now() - lastActivity;
+      
+      if (timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
+        toast({
+          title: "Sesiune expirată",
+          description: "Ai fost inactiv 15 minute. Revii la fonduri.",
+        });
+        unlockInventar();
+        navigate("/fonduri");
+      }
+    }, 60000); // Check every minute
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, updateActivity);
+      });
+      clearInterval(checkInterval);
+    };
+  }, [isAdmin, userId, inventarId, navigate, toast]);
+
   const checkAuthAndLoadData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     
