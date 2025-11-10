@@ -512,7 +512,7 @@ const Dosare = () => {
         doc.line(xPos, yPos + cellHeight * 4, xPos + docLabelWidth, yPos + cellHeight * 4);
         doc.setFontSize(7);
         doc.setFont('Roboto', 'bold');
-        doc.text('Conținut pe scurt:', xPos + 0.2, yPos + cellHeight * 3 + 0.3);
+        doc.text('Continut pe scurt:', xPos + 0.2, yPos + cellHeight * 3 + 0.3);
         doc.setFont('Roboto', 'normal');
         const continutLines = doc.splitTextToSize(dosar.continut, docLabelWidth - 2.8);
         doc.text(continutLines.slice(0, 2), xPos + 2.5, yPos + cellHeight * 3 + 0.3, { lineHeightFactor: 1.2 });
