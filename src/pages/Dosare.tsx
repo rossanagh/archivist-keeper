@@ -340,11 +340,25 @@ const Dosare = () => {
   const handleDownloadLabels = async () => {
     try {
       const { jsPDF } = await import('jspdf');
+      
+      // Load Roboto font that supports Romanian diacritics
+      const fontUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf';
+      const fontResponse = await fetch(fontUrl);
+      const fontBlob = await fontResponse.arrayBuffer();
+      const fontBase64 = btoa(
+        new Uint8Array(fontBlob).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+      
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'cm',
         format: 'a4'
       });
+      
+      // Add Romanian-compatible font
+      doc.addFileToVFS('Roboto-Regular.ttf', fontBase64);
+      doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+      doc.setFont('Roboto');
 
       // Helper function to fit text in available width
       const fitText = (text: string, maxWidth: number, startFontSize: number, minFontSize: number = 4) => {
