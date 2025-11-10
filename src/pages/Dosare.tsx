@@ -449,24 +449,24 @@ const Dosare = () => {
         
         // Row 1: Fond
         doc.line(xPos, yPos + cellHeight, xPos + docLabelWidth, yPos + cellHeight);
-        doc.setFontSize(8);
+        doc.setFontSize(7);
         const fondLines = doc.splitTextToSize(fondNume, docLabelWidth - 0.4);
-        doc.text(fondLines.slice(0, 2), xPos + 0.2, yPos + 0.35, { lineHeightFactor: 1.2 });
+        doc.text(fondLines.slice(0, 2), xPos + 0.2, yPos + 0.3, { lineHeightFactor: 1.2 });
         
         // Row 2: Compartiment
         doc.line(xPos, yPos + cellHeight * 2, xPos + docLabelWidth, yPos + cellHeight * 2);
-        doc.setFontSize(8);
+        doc.setFontSize(7);
         const compartimentLines = doc.splitTextToSize(compartimentNume, docLabelWidth - 0.4);
-        doc.text(compartimentLines.slice(0, 2), xPos + 0.2, yPos + cellHeight + 0.35, { lineHeightFactor: 1.2 });
+        doc.text(compartimentLines.slice(0, 2), xPos + 0.2, yPos + cellHeight + 0.3, { lineHeightFactor: 1.2 });
         
         // Row 3: Indicativ | Nr Crt (split in two)
         doc.line(xPos, yPos + cellHeight * 3, xPos + docLabelWidth, yPos + cellHeight * 3);
         const midX = xPos + docLabelWidth / 2;
         doc.line(midX, yPos + cellHeight * 2, midX, yPos + cellHeight * 3);
-        doc.setFontSize(8);
+        doc.setFontSize(7);
         const indicativLines = doc.splitTextToSize(dosar.indicativ_nomenclator, (docLabelWidth / 2) - 0.4);
-        doc.text(indicativLines.slice(0, 2), xPos + 0.2, yPos + cellHeight * 2 + 0.35, { lineHeightFactor: 1.2 });
-        doc.text(dosar.nr_crt.toString(), midX + 0.2, yPos + cellHeight * 2 + 0.35);
+        doc.text(indicativLines.slice(0, 2), xPos + 0.2, yPos + cellHeight * 2 + 0.3, { lineHeightFactor: 1.2 });
+        doc.text(dosar.nr_crt.toString(), midX + 0.2, yPos + cellHeight * 2 + 0.3);
         
         // Row 4: Continut
         doc.line(xPos, yPos + cellHeight * 4, xPos + docLabelWidth, yPos + cellHeight * 4);
