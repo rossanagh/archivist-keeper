@@ -376,13 +376,13 @@ const Dosare = () => {
       const pageWidth = 29.7; // A4 landscape width in cm
       const pageHeight = 21; // A4 landscape height in cm
       const labelWidth = 2; // 2 cm width for each spine
-      const labelsPerPage = Math.floor(pageWidth / labelWidth); // 14 labels per page
+      const spineLabelsPerPage = Math.floor(pageWidth / labelWidth); // 14 labels per page
       
       let labelIndex = 0;
       
       for (const dosar of dosare) {
-        const pageIndex = Math.floor(labelIndex / labelsPerPage);
-        const positionInPage = labelIndex % labelsPerPage;
+        const pageIndex = Math.floor(labelIndex / spineLabelsPerPage);
+        const positionInPage = labelIndex % spineLabelsPerPage;
         
         // Add new page if needed
         if (labelIndex > 0 && positionInPage === 0) {
@@ -430,28 +430,29 @@ const Dosare = () => {
         labelIndex++;
       }
       
-      // Add document labels (10cm width) after spines
+      // Add document labels (10 per page) after spines
       doc.addPage();
       
-      const docLabelWidth = 10; // 10 cm width
-      const docLabelHeight = 5; // Height for each label
-      const labelsPerRow = 2; // 2 labels per row (20cm total, leaving margin)
+      const docLabelWidth = 14; // 14 cm width
+      const docLabelHeight = 3.8; // Height for each label
+      const docLabelsPerRow = 2; // 2 labels per row
+      const docLabelsPerPage = 10; // 5 rows x 2 columns = 10 labels per page
       const marginX = 0.5;
-      const marginY = 1;
+      const marginY = 0.5;
       
       for (let i = 0; i < dosare.length; i++) {
         const dosar = dosare[i];
-        const row = Math.floor(i / labelsPerRow);
-        const col = i % labelsPerRow;
+        const row = Math.floor(i / docLabelsPerRow);
+        const col = i % docLabelsPerRow;
         
-        // Add new page if needed (4 labels per page max - 2x2)
-        if (i > 0 && i % 4 === 0) {
+        // Add new page if needed (10 labels per page max - 5x2)
+        if (i > 0 && i % docLabelsPerPage === 0) {
           doc.addPage();
         }
         
-        const adjustedRow = row % 2; // Reset row for each page
+        const adjustedRow = row % 5; // Reset row for each page (5 rows per page)
         const xPos = marginX + col * (docLabelWidth + 0.5);
-        const yPos = marginY + adjustedRow * (docLabelHeight + 0.5);
+        const yPos = marginY + adjustedRow * (docLabelHeight + 0.3); // Reduced spacing to fit 5 rows
         
         // Draw outer border
         doc.setDrawColor(0, 0, 0);
