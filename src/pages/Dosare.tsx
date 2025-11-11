@@ -666,7 +666,7 @@ const Dosare = () => {
                 headerMapping["continut"] = index;
               } else if (headerStr.includes("date") && headerStr.includes("extreme")) {
                 headerMapping["date_extreme"] = index;
-              } else if (headerStr.includes("număr") && headerStr.includes("file") || headerStr.includes("numar") && headerStr.includes("file")) {
+              } else if ((headerStr.includes("număr") || headerStr.includes("numar")) && headerStr.includes("file")) {
                 headerMapping["numar_file"] = index;
               } else if (headerStr.includes("observații") || headerStr.includes("observatii")) {
                 headerMapping["observatii"] = index;
