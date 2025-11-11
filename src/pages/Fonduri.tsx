@@ -276,7 +276,7 @@ const Fonduri = () => {
                   Descarcă Evidență
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[60vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Descarcă Evidență</DialogTitle>
                 </DialogHeader>
