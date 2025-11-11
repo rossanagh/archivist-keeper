@@ -41,7 +41,6 @@ const Dosare = () => {
   const [loading, setLoading] = useState(true);
   const dosarePerPage = 10;
   const [formData, setFormData] = useState({
-    nr_crt: "",
     indicativ_nomenclator: "",
     continut: "",
     date_extreme: "",
@@ -229,38 +228,19 @@ const Dosare = () => {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const nrCrt = parseInt(formData.nr_crt);
     
-    // Get existing dosare to validate nr_crt
+    // Get existing dosare to calculate next nr_crt
     const { data: existingDosare } = await supabase
       .from("dosare")
       .select("nr_crt")
       .eq("inventar_id", inventarId)
       .order("nr_crt", { ascending: true });
 
-    // Check if nr_crt already exists
-    if (existingDosare?.some(d => d.nr_crt === nrCrt)) {
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: `Numărul curent ${nrCrt} există deja`,
-      });
-      return;
-    }
-
-    // Check if nr_crt is valid in sequence
+    // Auto-calculate next nr_crt
     const maxExisting = existingDosare && existingDosare.length > 0 
       ? Math.max(...existingDosare.map(d => d.nr_crt)) 
       : 0;
-    
-    if (nrCrt !== maxExisting + 1 && nrCrt !== 1) {
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: `Numărul curent trebuie să fie ${maxExisting > 0 ? maxExisting + 1 : 1}, nu ${nrCrt}`,
-      });
-      return;
-    }
+    const nrCrt = maxExisting + 1;
     
     const { error } = await supabase.from("dosare").insert([
       {
@@ -314,7 +294,6 @@ const Dosare = () => {
         description: "Dosar adăugat cu succes",
       });
       setFormData({
-        nr_crt: "",
         indicativ_nomenclator: "",
         continut: "",
         date_extreme: "",
@@ -1106,33 +1085,19 @@ const Dosare = () => {
                       <DialogTitle>Adaugă Dosar Nou</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleAdd} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="nr_crt">Nr. Crt *</Label>
-                          <Input
-                            id="nr_crt"
-                            type="number"
-                            value={formData.nr_crt}
-                            onChange={(e) =>
-                              setFormData({ ...formData, nr_crt: e.target.value })
-                            }
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="indicativ">Indicativ Nomenclator *</Label>
-                          <Input
-                            id="indicativ"
-                            value={formData.indicativ_nomenclator}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                indicativ_nomenclator: e.target.value,
-                              })
-                            }
-                            required
-                          />
-                        </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="indicativ">Indicativ Nomenclator *</Label>
+                        <Input
+                          id="indicativ"
+                          value={formData.indicativ_nomenclator}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              indicativ_nomenclator: e.target.value,
+                            })
+                          }
+                          required
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="continut">Conținut *</Label>
@@ -1147,9 +1112,13 @@ const Dosare = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="date">Date Extreme *</Label>
+                          <Label htmlFor="date">An (Date Extreme) *</Label>
                           <Input
                             id="date"
+                            type="number"
+                            placeholder="2005"
+                            min="1900"
+                            max="2100"
                             value={formData.date_extreme}
                             onChange={(e) =>
                               setFormData({
