@@ -395,7 +395,7 @@ const Dosare = () => {
       worksheet[`B${rowIndex}`] = { t: 's', v: '' }; // Data intrarii - empty
       worksheet[`C${rowIndex}`] = { t: 's', v: compartimentNume }; // Denumirea compartimentului
       worksheet[`D${rowIndex}`] = { t: 's', v: `Inventarul documentelor din anul ${inventarAn}` }; // Nume Inventar
-      worksheet[`E${rowIndex}`] = { t: 's', v: dateExtreme }; // Date extreme
+      worksheet[`E${rowIndex}`] = { t: 's', v: inventarAn.toString() }; // Date extreme - doar anul
       worksheet[`F${rowIndex}`] = { t: 'n', v: dosare.length }; // Nr. Total dosare
       worksheet[`G${rowIndex}`] = { t: 'n', v: dosare.length }; // Nr. Dosare primite efectiv
       worksheet[`H${rowIndex}`] = { t: 'n', v: 0 }; // Nr. Dosare ramase la compartim
