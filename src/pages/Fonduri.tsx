@@ -41,6 +41,7 @@ const Fonduri = () => {
   const [selectedInventarId, setSelectedInventarId] = useState<string>("");
   const [nume, setNume] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [inventarSearchTerm, setInventarSearchTerm] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingInventare, setLoadingInventare] = useState(false);
@@ -157,37 +158,21 @@ const Fonduri = () => {
   };
 
   const handleDownloadEvidenta = async () => {
-    if (!selectedInventarId) {
+    if (!selectedFondId) {
       toast({
         variant: "destructive",
         title: "Eroare",
-        description: "Selectează un inventar",
+        description: "Selectează un fond",
       });
       return;
     }
 
     try {
-      const selectedInventar = inventare.find(inv => inv.id === selectedInventarId);
-      if (!selectedInventar) return;
+      // Sort inventare alphabetically by compartiment name
+      const sortedInventare = [...inventare].sort((a, b) => 
+        a.compartimente.nume.localeCompare(b.compartimente.nume, 'ro')
+      );
 
-      // Load dosare for this inventar
-      const { data: dosare, error: dosareError } = await supabase
-        .from("dosare")
-        .select("*")
-        .eq("inventar_id", selectedInventarId);
-
-      if (dosareError) {
-        toast({
-          variant: "destructive",
-          title: "Eroare",
-          description: "Nu s-au putut încărca dosarele",
-        });
-        return;
-      }
-
-      // Get fond name
-      const selectedFond = fonduri.find(f => f.id === selectedFondId);
-      
       // Import the template file
       const templateUrl = new URL('../assets/registru-evidenta-template.xlsx', import.meta.url).href;
       const response = await fetch(templateUrl);
@@ -196,30 +181,42 @@ const Fonduri = () => {
       
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       
-      // Fill in the data in row 7 (index 6)
-      const rowIndex = 7;
+      // Fill in the data for each inventar, starting from row 7
+      let rowIndex = 7;
       
-      worksheet[`B${rowIndex}`] = { t: 's', v: '' }; // Data intrarii - empty
-      worksheet[`C${rowIndex}`] = { t: 's', v: selectedInventar.compartimente.nume }; // Denumirea compartimentului
-      worksheet[`D${rowIndex}`] = { t: 's', v: `Inventarul documentelor din anul ${selectedInventar.an}` }; // Nume Inventar
-      worksheet[`E${rowIndex}`] = { t: 's', v: selectedInventar.an.toString() }; // Date extreme - doar anul
-      worksheet[`F${rowIndex}`] = { t: 'n', v: dosare?.length || 0 }; // Nr. Total dosare
-      worksheet[`G${rowIndex}`] = { t: 'n', v: dosare?.length || 0 }; // Nr. Dosare primite efectiv
-      worksheet[`H${rowIndex}`] = { t: 'n', v: 0 }; // Nr. Dosare ramase la compartim
-      worksheet[`I${rowIndex}`] = { t: 's', v: `${selectedInventar.termen_pastrare} ani` }; // Termen de pastrare
-      worksheet[`J${rowIndex}`] = { t: 's', v: '' }; // Data iesirii - empty
-      worksheet[`K${rowIndex}`] = { t: 's', v: '' }; // Unde s-au predat - empty
-      worksheet[`L${rowIndex}`] = { t: 's', v: '' }; // Act de predare - empty
-      worksheet[`M${rowIndex}`] = { t: 's', v: '' }; // Total dosare iesite - empty
-      worksheet[`N${rowIndex}`] = { t: 's', v: '' }; // Obs - empty
+      for (const inventar of sortedInventare) {
+        // Load dosare for this inventar
+        const { data: dosare } = await supabase
+          .from("dosare")
+          .select("*")
+          .eq("inventar_id", inventar.id);
+        
+        worksheet[`A${rowIndex}`] = { t: 'n', v: rowIndex - 6 }; // Nr. crt
+        worksheet[`B${rowIndex}`] = { t: 's', v: '' }; // Data intrarii - empty
+        worksheet[`C${rowIndex}`] = { t: 's', v: inventar.compartimente.nume }; // Denumirea compartimentului
+        worksheet[`D${rowIndex}`] = { t: 's', v: `Inventarul documentelor din anul ${inventar.an}` }; // Nume Inventar
+        worksheet[`E${rowIndex}`] = { t: 's', v: inventar.an.toString() }; // Date extreme - doar anul
+        worksheet[`F${rowIndex}`] = { t: 'n', v: dosare?.length || 0 }; // Nr. Total dosare
+        worksheet[`G${rowIndex}`] = { t: 'n', v: dosare?.length || 0 }; // Nr. Dosare primite efectiv
+        worksheet[`H${rowIndex}`] = { t: 'n', v: 0 }; // Nr. Dosare ramase la compartim
+        worksheet[`I${rowIndex}`] = { t: 's', v: `${inventar.termen_pastrare} ani` }; // Termen de pastrare
+        worksheet[`J${rowIndex}`] = { t: 's', v: '' }; // Data iesirii - empty
+        worksheet[`K${rowIndex}`] = { t: 's', v: '' }; // Unde s-au predat - empty
+        worksheet[`L${rowIndex}`] = { t: 's', v: '' }; // Act de predare - empty
+        worksheet[`M${rowIndex}`] = { t: 's', v: '' }; // Total dosare iesite - empty
+        worksheet[`N${rowIndex}`] = { t: 's', v: '' }; // Obs - empty
+        
+        rowIndex++;
+      }
       
       // Generate the file
+      const selectedFond = fonduri.find(f => f.id === selectedFondId);
       const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/octet-stream' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `Evidenta_${selectedInventar.compartimente.nume}_${selectedInventar.an}.xlsx`;
+      link.download = `Evidenta_${selectedFond?.nume || 'Fond'}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -232,7 +229,7 @@ const Fonduri = () => {
       
       setEvidenceDialogOpen(false);
       setSelectedFondId("");
-      setSelectedInventarId("");
+      setInventarSearchTerm("");
     } catch (error) {
       console.error("Error downloading evidenta:", error);
       toast({
@@ -253,6 +250,11 @@ const Fonduri = () => {
 
   const filteredFonduri = fonduri.filter((fond) =>
     fond.nume.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredInventare = inventare.filter((inv) =>
+    inv.compartimente.nume.toLowerCase().includes(inventarSearchTerm.toLowerCase()) ||
+    inv.an.toString().includes(inventarSearchTerm)
   );
 
   if (loading) {
@@ -308,48 +310,55 @@ const Fonduri = () => {
                         ) : inventare.length === 0 ? (
                           <p className="text-muted-foreground text-sm">Nu există inventare pentru acest fond.</p>
                         ) : (
-                          <div className="border rounded-md">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Selectează</TableHead>
-                                  <TableHead>Compartiment</TableHead>
-                                  <TableHead>An</TableHead>
-                                  <TableHead>Termen Păstrare</TableHead>
-                                  <TableHead>Nr. Dosare</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {inventare.map((inv) => (
-                                  <TableRow 
-                                    key={inv.id}
-                                    className={selectedInventarId === inv.id ? "bg-muted" : "cursor-pointer hover:bg-muted/50"}
-                                    onClick={() => setSelectedInventarId(inv.id)}
-                                  >
-                                    <TableCell>
-                                      <input 
-                                        type="radio" 
-                                        checked={selectedInventarId === inv.id}
-                                        onChange={() => setSelectedInventarId(inv.id)}
-                                        className="cursor-pointer"
-                                      />
-                                    </TableCell>
-                                    <TableCell>{inv.compartimente.nume}</TableCell>
-                                    <TableCell>{inv.an}</TableCell>
-                                    <TableCell>{inv.termen_pastrare} ani</TableCell>
-                                    <TableCell>{inv.numar_dosare}</TableCell>
+                          <>
+                            <div className="relative mb-4">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                type="text"
+                                placeholder="Caută după compartiment sau an..."
+                                value={inventarSearchTerm}
+                                onChange={(e) => setInventarSearchTerm(e.target.value)}
+                                className="pl-10"
+                              />
+                            </div>
+                            <div className="border rounded-md">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Compartiment</TableHead>
+                                    <TableHead>An</TableHead>
+                                    <TableHead>Termen Păstrare</TableHead>
+                                    <TableHead>Nr. Dosare</TableHead>
                                   </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
+                                </TableHeader>
+                                <TableBody>
+                                  {filteredInventare.length === 0 ? (
+                                    <TableRow>
+                                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                        Nu s-au găsit inventare
+                                      </TableCell>
+                                    </TableRow>
+                                  ) : (
+                                    filteredInventare.map((inv) => (
+                                      <TableRow key={inv.id}>
+                                        <TableCell>{inv.compartimente.nume}</TableCell>
+                                        <TableCell>{inv.an}</TableCell>
+                                        <TableCell>{inv.termen_pastrare} ani</TableCell>
+                                        <TableCell>{inv.numar_dosare}</TableCell>
+                                      </TableRow>
+                                    ))
+                                  )}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </>
                         )}
                       </div>
                       
-                      {selectedInventarId && (
+                      {inventare.length > 0 && (
                         <Button onClick={handleDownloadEvidenta} className="w-full">
                           <Download className="h-4 w-4 mr-2" />
-                          Descarcă Evidența
+                          Descarcă Evidența pentru Toate Inventarele
                         </Button>
                       )}
                     </>
