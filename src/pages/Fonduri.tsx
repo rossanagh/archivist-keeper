@@ -42,7 +42,6 @@ const Fonduri = () => {
   const [nume, setNume] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [inventarSearchTerm, setInventarSearchTerm] = useState("");
-  const [fondSearchTerm, setFondSearchTerm] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingInventare, setLoadingInventare] = useState(false);
@@ -243,7 +242,6 @@ const Fonduri = () => {
       setSelectedFondId("");
       setSelectedInventarIds([]);
       setInventarSearchTerm("");
-      setFondSearchTerm("");
     } catch (error) {
       console.error("Error downloading evidenta:", error);
       toast({
@@ -271,10 +269,6 @@ const Fonduri = () => {
   const filteredInventare = inventare.filter((inv) =>
     inv.compartimente.nume.toLowerCase().includes(inventarSearchTerm.toLowerCase()) ||
     inv.an.toString().includes(inventarSearchTerm)
-  );
-
-  const filteredFonduriForDialog = fonduri.filter((fond) =>
-    fond.nume.toLowerCase().includes(fondSearchTerm.toLowerCase())
   );
 
   const handleSelectAll = () => {
@@ -322,38 +316,17 @@ const Fonduri = () => {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="fond-search">Caută Fond</Label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="fond-search"
-                        type="text"
-                        placeholder="Caută după nume fond..."
-                        value={fondSearchTerm}
-                        onChange={(e) => setFondSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="fond-select">Selectează Fond</Label>
                     <Select value={selectedFondId} onValueChange={setSelectedFondId}>
                       <SelectTrigger id="fond-select">
                         <SelectValue placeholder="Alege un fond" />
                       </SelectTrigger>
                       <SelectContent>
-                        {filteredFonduriForDialog.length === 0 ? (
-                          <div className="p-2 text-sm text-muted-foreground text-center">
-                            Nu s-au găsit fonduri
-                          </div>
-                        ) : (
-                          filteredFonduriForDialog.map((fond) => (
-                            <SelectItem key={fond.id} value={fond.id}>
-                              {fond.nume}
-                            </SelectItem>
-                          ))
-                        )}
+                        {fonduri.map((fond) => (
+                          <SelectItem key={fond.id} value={fond.id}>
+                            {fond.nume}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
