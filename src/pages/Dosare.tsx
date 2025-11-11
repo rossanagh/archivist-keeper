@@ -30,6 +30,7 @@ const Dosare = () => {
   const [inventarTermen, setInventarTermen] = useState<string>("");
   const [fondNume, setFondNume] = useState<string>("");
   const [compartimentNume, setCompartimentNume] = useState<string>("");
+  const [dateExtreme, setDateExtreme] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasFullAccess, setHasFullAccess] = useState(false);
   const [userId, setUserId] = useState<string>("");
@@ -192,6 +193,27 @@ const Dosare = () => {
       });
     } else {
       setDosare(data || []);
+      
+      // Calculate date extreme range from all dosare
+      if (data && data.length > 0) {
+        const dateRanges = data.map(d => d.date_extreme).filter(d => d);
+        if (dateRanges.length > 0) {
+          // Extract all years from date ranges (handles formats like "2020-2025" or "2020")
+          const allYears: number[] = [];
+          dateRanges.forEach(range => {
+            const years = range.match(/\d{4}/g);
+            if (years) {
+              years.forEach(y => allYears.push(parseInt(y)));
+            }
+          });
+          
+          if (allYears.length > 0) {
+            const minYear = Math.min(...allYears);
+            const maxYear = Math.max(...allYears);
+            setDateExtreme(minYear === maxYear ? `${minYear}` : `${minYear}-${maxYear}`);
+          }
+        }
+      }
     }
   };
 
@@ -372,6 +394,61 @@ const Dosare = () => {
         variant: "destructive",
         title: "Eroare la export",
         description: "Nu s-a putut exporta fișierul",
+      });
+    }
+  };
+
+  const handleDownloadEvidenta = async () => {
+    try {
+      // Import the template file
+      const templateUrl = new URL('../assets/registru-evidenta-template.xlsx', import.meta.url).href;
+      const response = await fetch(templateUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      
+      // Fill in the data in row 7 (index 6) based on the template structure
+      // Row 7 is where the first data entry should be
+      const rowIndex = 7;
+      
+      // Column mapping based on the Excel structure
+      worksheet[`B${rowIndex}`] = { t: 's', v: '' }; // Data intrarii - empty
+      worksheet[`C${rowIndex}`] = { t: 's', v: compartimentNume }; // Denumirea compartimentului
+      worksheet[`D${rowIndex}`] = { t: 's', v: `Inventarul documentelor din anul ${inventarAn}` }; // Nume Inventar
+      worksheet[`E${rowIndex}`] = { t: 's', v: dateExtreme }; // Date extreme
+      worksheet[`F${rowIndex}`] = { t: 'n', v: dosare.length }; // Nr. Total dosare
+      worksheet[`G${rowIndex}`] = { t: 'n', v: dosare.length }; // Nr. Dosare primite efectiv
+      worksheet[`H${rowIndex}`] = { t: 'n', v: 0 }; // Nr. Dosare ramase la compartim
+      worksheet[`I${rowIndex}`] = { t: 's', v: inventarTermen }; // Termen de pastrare
+      worksheet[`J${rowIndex}`] = { t: 's', v: '' }; // Data iesirii - empty
+      worksheet[`K${rowIndex}`] = { t: 's', v: '' }; // Unde s-au predat - empty
+      worksheet[`L${rowIndex}`] = { t: 's', v: '' }; // Act de predare - empty
+      worksheet[`M${rowIndex}`] = { t: 's', v: '' }; // Total dosare iesite - empty
+      worksheet[`N${rowIndex}`] = { t: 's', v: '' }; // Obs - empty
+      
+      // Generate the file
+      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/octet-stream' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Evidenta_${compartimentNume}_${inventarAn}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Success",
+        description: "Evidența a fost descărcată cu succes",
+      });
+    } catch (error) {
+      console.error("Error downloading evidenta:", error);
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Nu s-a putut descărca evidența",
       });
     }
   };
@@ -994,10 +1071,16 @@ const Dosare = () => {
                     Export Excel
                   </Button>
                   {hasFullAccess && (
-                    <Button variant="outline" onClick={handleDownloadLabels}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Descarcă Etichete
-                    </Button>
+                    <>
+                      <Button variant="outline" onClick={handleDownloadLabels}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Descarcă Etichete
+                      </Button>
+                      <Button variant="outline" onClick={handleDownloadEvidenta}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Descarcă Evidență
+                      </Button>
+                    </>
                   )}
                   <Button variant="outline" asChild>
                     <label className="cursor-pointer">
