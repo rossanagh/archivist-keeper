@@ -1127,13 +1127,11 @@ const Dosare = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="date">An (Date Extreme) *</Label>
+                          <Label htmlFor="date">Date Extreme *</Label>
                           <Input
                             id="date"
-                            type="number"
-                            placeholder="2005"
-                            min="1900"
-                            max="2100"
+                            type="text"
+                            placeholder="ex: 2005"
                             value={formData.date_extreme}
                             onChange={(e) =>
                               setFormData({
