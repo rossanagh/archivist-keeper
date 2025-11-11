@@ -287,7 +287,7 @@ const Fonduri = () => {
                       <SelectTrigger id="fond-select">
                         <SelectValue placeholder="Alege un fond" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent side="bottom">
                         {fonduri.map((fond) => (
                           <SelectItem key={fond.id} value={fond.id}>
                             {fond.nume}
