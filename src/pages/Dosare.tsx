@@ -40,6 +40,7 @@ const Dosare = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const dosarePerPage = 10;
+  const [nextNrCrt, setNextNrCrt] = useState<number>(1);
   const [formData, setFormData] = useState({
     indicativ_nomenclator: "",
     continut: "",
@@ -192,6 +193,12 @@ const Dosare = () => {
       });
     } else {
       setDosare(data || []);
+      
+      // Calculate next nr_crt
+      const maxExisting = data && data.length > 0 
+        ? Math.max(...data.map(d => d.nr_crt)) 
+        : 0;
+      setNextNrCrt(maxExisting + 1);
       
       // Calculate date extreme range from all dosare
       if (data && data.length > 0) {
@@ -1085,6 +1092,14 @@ const Dosare = () => {
                       <DialogTitle>Adaugă Dosar Nou</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleAdd} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Nr. Curent (Auto)</Label>
+                        <Input
+                          value={nextNrCrt}
+                          disabled
+                          className="bg-muted"
+                        />
+                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="indicativ">Indicativ Nomenclator *</Label>
                         <Input
