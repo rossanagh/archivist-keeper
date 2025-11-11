@@ -399,7 +399,7 @@ const Dosare = () => {
       worksheet[`F${rowIndex}`] = { t: 'n', v: dosare.length }; // Nr. Total dosare
       worksheet[`G${rowIndex}`] = { t: 'n', v: dosare.length }; // Nr. Dosare primite efectiv
       worksheet[`H${rowIndex}`] = { t: 'n', v: 0 }; // Nr. Dosare ramase la compartim
-      worksheet[`I${rowIndex}`] = { t: 's', v: inventarTermen }; // Termen de pastrare
+      worksheet[`I${rowIndex}`] = { t: 's', v: `${inventarTermen} ani` }; // Termen de pastrare
       worksheet[`J${rowIndex}`] = { t: 's', v: '' }; // Data iesirii - empty
       worksheet[`K${rowIndex}`] = { t: 's', v: '' }; // Unde s-au predat - empty
       worksheet[`L${rowIndex}`] = { t: 's', v: '' }; // Act de predare - empty
