@@ -1045,10 +1045,6 @@ const Dosare = () => {
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={handleExport}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Excel
-                  </Button>
                   {hasFullAccess && (
                     <>
                       <Button variant="outline" onClick={handleDownloadLabels}>
@@ -1061,6 +1057,10 @@ const Dosare = () => {
                       </Button>
                     </>
                   )}
+                  <Button variant="outline" onClick={handleExport}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Excel
+                  </Button>
                   <Button variant="outline" asChild>
                     <label className="cursor-pointer">
                       <Upload className="h-4 w-4 mr-2" />
