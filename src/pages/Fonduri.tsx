@@ -166,10 +166,8 @@ const Fonduri = () => {
     }
 
     try {
-      // Sort all inventare alphabetically by compartiment name
-      const sortedInventare = inventare.sort((a, b) => 
-        a.compartimente.nume.localeCompare(b.compartimente.nume, 'ro')
-      );
+      // Sort all inventare by year (an) in ascending order
+      const sortedInventare = inventare.sort((a, b) => a.an - b.an);
 
       // Import the template file
       const templateUrl = new URL('../assets/registru-evidenta-template.xlsx', import.meta.url).href;
