@@ -192,6 +192,10 @@ const Fonduri = () => {
       
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       
+      // Add fond arhivistic on first row
+      const selectedFond = fonduri.find(f => f.id === selectedFondId);
+      worksheet['A1'] = { t: 's', v: `Fond arhivistic: ${selectedFond?.nume || ''}` };
+      
       // Fill in the data for each inventar, starting from row 7
       let rowIndex = 7;
       
@@ -221,7 +225,6 @@ const Fonduri = () => {
       }
       
       // Generate the file
-      const selectedFond = fonduri.find(f => f.id === selectedFondId);
       const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/octet-stream' });
       const url = window.URL.createObjectURL(blob);
