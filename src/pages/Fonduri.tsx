@@ -7,8 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Archive, Search } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, Archive, Search, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import * as XLSX from "xlsx";
 
 interface Fond {
   id: string;
@@ -16,14 +19,31 @@ interface Fond {
   created_at: string;
 }
 
+interface Inventar {
+  id: string;
+  an: number;
+  termen_pastrare: string;
+  numar_dosare: number;
+  compartiment_id: string;
+  compartimente: {
+    nume: string;
+    fond_id: string;
+  };
+}
+
 const Fonduri = () => {
   const [fonduri, setFonduri] = useState<Fond[]>([]);
+  const [inventare, setInventare] = useState<Inventar[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [open, setOpen] = useState(false);
+  const [evidenceDialogOpen, setEvidenceDialogOpen] = useState(false);
+  const [selectedFondId, setSelectedFondId] = useState<string>("");
+  const [selectedInventarId, setSelectedInventarId] = useState<string>("");
   const [nume, setNume] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingInventare, setLoadingInventare] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -105,6 +125,132 @@ const Fonduri = () => {
     }
   };
 
+  const loadInventareForFond = async (fondId: string) => {
+    setLoadingInventare(true);
+    const { data, error } = await supabase
+      .from("inventare")
+      .select(`
+        id,
+        an,
+        termen_pastrare,
+        numar_dosare,
+        compartiment_id,
+        compartimente!inner (
+          nume,
+          fond_id
+        )
+      `)
+      .eq("compartimente.fond_id", fondId)
+      .order("an", { ascending: false });
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Nu s-au putut încărca inventarele",
+      });
+      setInventare([]);
+    } else {
+      setInventare(data || []);
+    }
+    setLoadingInventare(false);
+  };
+
+  const handleDownloadEvidenta = async () => {
+    if (!selectedInventarId) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Selectează un inventar",
+      });
+      return;
+    }
+
+    try {
+      const selectedInventar = inventare.find(inv => inv.id === selectedInventarId);
+      if (!selectedInventar) return;
+
+      // Load dosare for this inventar
+      const { data: dosare, error: dosareError } = await supabase
+        .from("dosare")
+        .select("*")
+        .eq("inventar_id", selectedInventarId);
+
+      if (dosareError) {
+        toast({
+          variant: "destructive",
+          title: "Eroare",
+          description: "Nu s-au putut încărca dosarele",
+        });
+        return;
+      }
+
+      // Get fond name
+      const selectedFond = fonduri.find(f => f.id === selectedFondId);
+      
+      // Import the template file
+      const templateUrl = new URL('../assets/registru-evidenta-template.xlsx', import.meta.url).href;
+      const response = await fetch(templateUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      
+      // Fill in the data in row 7 (index 6)
+      const rowIndex = 7;
+      
+      worksheet[`B${rowIndex}`] = { t: 's', v: '' }; // Data intrarii - empty
+      worksheet[`C${rowIndex}`] = { t: 's', v: selectedInventar.compartimente.nume }; // Denumirea compartimentului
+      worksheet[`D${rowIndex}`] = { t: 's', v: `Inventarul documentelor din anul ${selectedInventar.an}` }; // Nume Inventar
+      worksheet[`E${rowIndex}`] = { t: 's', v: selectedInventar.an.toString() }; // Date extreme - doar anul
+      worksheet[`F${rowIndex}`] = { t: 'n', v: dosare?.length || 0 }; // Nr. Total dosare
+      worksheet[`G${rowIndex}`] = { t: 'n', v: dosare?.length || 0 }; // Nr. Dosare primite efectiv
+      worksheet[`H${rowIndex}`] = { t: 'n', v: 0 }; // Nr. Dosare ramase la compartim
+      worksheet[`I${rowIndex}`] = { t: 's', v: `${selectedInventar.termen_pastrare} ani` }; // Termen de pastrare
+      worksheet[`J${rowIndex}`] = { t: 's', v: '' }; // Data iesirii - empty
+      worksheet[`K${rowIndex}`] = { t: 's', v: '' }; // Unde s-au predat - empty
+      worksheet[`L${rowIndex}`] = { t: 's', v: '' }; // Act de predare - empty
+      worksheet[`M${rowIndex}`] = { t: 's', v: '' }; // Total dosare iesite - empty
+      worksheet[`N${rowIndex}`] = { t: 's', v: '' }; // Obs - empty
+      
+      // Generate the file
+      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/octet-stream' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Evidenta_${selectedInventar.compartimente.nume}_${selectedInventar.an}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Succes",
+        description: "Evidența a fost descărcată cu succes",
+      });
+      
+      setEvidenceDialogOpen(false);
+      setSelectedFondId("");
+      setSelectedInventarId("");
+    } catch (error) {
+      console.error("Error downloading evidenta:", error);
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Nu s-a putut descărca evidența",
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (selectedFondId) {
+      loadInventareForFond(selectedFondId);
+    } else {
+      setInventare([]);
+    }
+  }, [selectedFondId]);
+
   const filteredFonduri = fonduri.filter((fond) =>
     fond.nume.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -124,36 +270,124 @@ const Fonduri = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold">Fonduri Arhivistice</h2>
-          {isAdmin && (
-            <Dialog open={open} onOpenChange={setOpen}>
+          <div className="flex gap-2">
+            <Dialog open={evidenceDialogOpen} onOpenChange={setEvidenceDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adaugă Fond
+                <Button variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Descarcă Evidență
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Adaugă Fond Nou</DialogTitle>
+                  <DialogTitle>Descarcă Evidență</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleAdd} className="space-y-4">
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nume">Numele Fondului</Label>
-                    <Input
-                      id="nume"
-                      value={nume}
-                      onChange={(e) => setNume(e.target.value)}
-                      placeholder="Introduceți numele fondului"
-                      required
-                    />
+                    <Label htmlFor="fond-select">Selectează Fond</Label>
+                    <Select value={selectedFondId} onValueChange={setSelectedFondId}>
+                      <SelectTrigger id="fond-select">
+                        <SelectValue placeholder="Alege un fond" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fonduri.map((fond) => (
+                          <SelectItem key={fond.id} value={fond.id}>
+                            {fond.nume}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Button type="submit" className="w-full">
-                    Adaugă
-                  </Button>
-                </form>
+
+                  {selectedFondId && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Inventare disponibile</Label>
+                        {loadingInventare ? (
+                          <p className="text-muted-foreground text-sm">Se încarcă inventarele...</p>
+                        ) : inventare.length === 0 ? (
+                          <p className="text-muted-foreground text-sm">Nu există inventare pentru acest fond.</p>
+                        ) : (
+                          <div className="border rounded-md">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Selectează</TableHead>
+                                  <TableHead>Compartiment</TableHead>
+                                  <TableHead>An</TableHead>
+                                  <TableHead>Termen Păstrare</TableHead>
+                                  <TableHead>Nr. Dosare</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {inventare.map((inv) => (
+                                  <TableRow 
+                                    key={inv.id}
+                                    className={selectedInventarId === inv.id ? "bg-muted" : "cursor-pointer hover:bg-muted/50"}
+                                    onClick={() => setSelectedInventarId(inv.id)}
+                                  >
+                                    <TableCell>
+                                      <input 
+                                        type="radio" 
+                                        checked={selectedInventarId === inv.id}
+                                        onChange={() => setSelectedInventarId(inv.id)}
+                                        className="cursor-pointer"
+                                      />
+                                    </TableCell>
+                                    <TableCell>{inv.compartimente.nume}</TableCell>
+                                    <TableCell>{inv.an}</TableCell>
+                                    <TableCell>{inv.termen_pastrare} ani</TableCell>
+                                    <TableCell>{inv.numar_dosare}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {selectedInventarId && (
+                        <Button onClick={handleDownloadEvidenta} className="w-full">
+                          <Download className="h-4 w-4 mr-2" />
+                          Descarcă Evidența
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
               </DialogContent>
             </Dialog>
-          )}
+            {isAdmin && (
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adaugă Fond
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Adaugă Fond Nou</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleAdd} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nume">Numele Fondului</Label>
+                      <Input
+                        id="nume"
+                        value={nume}
+                        onChange={(e) => setNume(e.target.value)}
+                        placeholder="Introduceți numele fondului"
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full">
+                      Adaugă
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
 
         <div className="relative">
