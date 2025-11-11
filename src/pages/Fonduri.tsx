@@ -38,7 +38,7 @@ const Fonduri = () => {
   const [open, setOpen] = useState(false);
   const [evidenceDialogOpen, setEvidenceDialogOpen] = useState(false);
   const [selectedFondId, setSelectedFondId] = useState<string>("");
-  const [selectedInventarId, setSelectedInventarId] = useState<string>("");
+  const [selectedInventarIds, setSelectedInventarIds] = useState<string[]>([]);
   const [nume, setNume] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [inventarSearchTerm, setInventarSearchTerm] = useState("");
@@ -167,11 +167,22 @@ const Fonduri = () => {
       return;
     }
 
+    if (selectedInventarIds.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Selectează cel puțin un inventar",
+      });
+      return;
+    }
+
     try {
-      // Sort inventare alphabetically by compartiment name
-      const sortedInventare = [...inventare].sort((a, b) => 
-        a.compartimente.nume.localeCompare(b.compartimente.nume, 'ro')
-      );
+      // Filter and sort selected inventare alphabetically by compartiment name
+      const selectedInventare = inventare
+        .filter(inv => selectedInventarIds.includes(inv.id))
+        .sort((a, b) => 
+          a.compartimente.nume.localeCompare(b.compartimente.nume, 'ro')
+        );
 
       // Import the template file
       const templateUrl = new URL('../assets/registru-evidenta-template.xlsx', import.meta.url).href;
@@ -184,7 +195,7 @@ const Fonduri = () => {
       // Fill in the data for each inventar, starting from row 7
       let rowIndex = 7;
       
-      for (const inventar of sortedInventare) {
+      for (const inventar of selectedInventare) {
         // Load dosare for this inventar
         const { data: dosare } = await supabase
           .from("dosare")
@@ -229,6 +240,7 @@ const Fonduri = () => {
       
       setEvidenceDialogOpen(false);
       setSelectedFondId("");
+      setSelectedInventarIds([]);
       setInventarSearchTerm("");
     } catch (error) {
       console.error("Error downloading evidenta:", error);
@@ -243,8 +255,10 @@ const Fonduri = () => {
   useEffect(() => {
     if (selectedFondId) {
       loadInventareForFond(selectedFondId);
+      setSelectedInventarIds([]);
     } else {
       setInventare([]);
+      setSelectedInventarIds([]);
     }
   }, [selectedFondId]);
 
@@ -256,6 +270,22 @@ const Fonduri = () => {
     inv.compartimente.nume.toLowerCase().includes(inventarSearchTerm.toLowerCase()) ||
     inv.an.toString().includes(inventarSearchTerm)
   );
+
+  const handleSelectAll = () => {
+    if (selectedInventarIds.length === filteredInventare.length) {
+      setSelectedInventarIds([]);
+    } else {
+      setSelectedInventarIds(filteredInventare.map(inv => inv.id));
+    }
+  };
+
+  const handleSelectInventar = (inventarId: string) => {
+    setSelectedInventarIds(prev => 
+      prev.includes(inventarId) 
+        ? prev.filter(id => id !== inventarId)
+        : [...prev, inventarId]
+    );
+  };
 
   if (loading) {
     return (
@@ -325,6 +355,14 @@ const Fonduri = () => {
                               <Table>
                                 <TableHeader>
                                   <TableRow>
+                                    <TableHead className="w-12">
+                                      <input
+                                        type="checkbox"
+                                        checked={filteredInventare.length > 0 && selectedInventarIds.length === filteredInventare.length}
+                                        onChange={handleSelectAll}
+                                        className="cursor-pointer"
+                                      />
+                                    </TableHead>
                                     <TableHead>Compartiment</TableHead>
                                     <TableHead>An</TableHead>
                                     <TableHead>Termen Păstrare</TableHead>
@@ -334,13 +372,21 @@ const Fonduri = () => {
                                 <TableBody>
                                   {filteredInventare.length === 0 ? (
                                     <TableRow>
-                                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                      <TableCell colSpan={5} className="text-center text-muted-foreground">
                                         Nu s-au găsit inventare
                                       </TableCell>
                                     </TableRow>
                                   ) : (
                                     filteredInventare.map((inv) => (
                                       <TableRow key={inv.id}>
+                                        <TableCell>
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedInventarIds.includes(inv.id)}
+                                            onChange={() => handleSelectInventar(inv.id)}
+                                            className="cursor-pointer"
+                                          />
+                                        </TableCell>
                                         <TableCell>{inv.compartimente.nume}</TableCell>
                                         <TableCell>{inv.an}</TableCell>
                                         <TableCell>{inv.termen_pastrare} ani</TableCell>
@@ -356,9 +402,13 @@ const Fonduri = () => {
                       </div>
                       
                       {inventare.length > 0 && (
-                        <Button onClick={handleDownloadEvidenta} className="w-full">
+                        <Button 
+                          onClick={handleDownloadEvidenta} 
+                          className="w-full"
+                          disabled={selectedInventarIds.length === 0}
+                        >
                           <Download className="h-4 w-4 mr-2" />
-                          Descarcă Evidența pentru Toate Inventarele
+                          Descarcă Evidența pentru {selectedInventarIds.length} {selectedInventarIds.length === 1 ? 'Inventar' : 'Inventare'}
                         </Button>
                       )}
                     </>
