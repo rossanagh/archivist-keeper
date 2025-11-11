@@ -198,6 +198,7 @@ const Fonduri = () => {
       
       // Fill in the data for each inventar, starting from row 7
       let rowIndex = 7;
+      let nrCrt = 1;
       
       for (const inventar of selectedInventare) {
         // Load dosare for this inventar
@@ -206,7 +207,7 @@ const Fonduri = () => {
           .select("*")
           .eq("inventar_id", inventar.id);
         
-        worksheet[`A${rowIndex}`] = { t: 'n', v: rowIndex - 6 }; // Nr. crt
+        worksheet[`A${rowIndex}`] = { t: 'n', v: nrCrt }; // Nr. crt
         worksheet[`B${rowIndex}`] = { t: 's', v: '' }; // Data intrarii - empty
         worksheet[`C${rowIndex}`] = { t: 's', v: inventar.compartimente.nume }; // Denumirea compartimentului
         worksheet[`D${rowIndex}`] = { t: 's', v: `Inventarul documentelor din anul ${inventar.an}` }; // Nume Inventar
@@ -222,6 +223,7 @@ const Fonduri = () => {
         worksheet[`N${rowIndex}`] = { t: 's', v: '' }; // Obs - empty
         
         rowIndex++;
+        nrCrt++;
       }
       
       // Generate the file
