@@ -254,6 +254,13 @@ const Fonduri = () => {
       
       console.log(`Total ${nrCrt - 1} rânduri procesate în evidență.`);
       
+      // Update worksheet range to include all new rows
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+      range.e.r = rowIndex - 1; // Set end row to last row we wrote
+      worksheet['!ref'] = XLSX.utils.encode_range(range);
+      
+      console.log(`Worksheet range actualizat la: ${worksheet['!ref']}`);
+      
       // Generate the file
       const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/octet-stream' });
