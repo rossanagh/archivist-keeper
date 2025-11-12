@@ -34,6 +34,7 @@ interface Inventar {
 const Fonduri = () => {
   const [fonduri, setFonduri] = useState<Fond[]>([]);
   const [inventare, setInventare] = useState<Inventar[]>([]);
+  const [totalInventare, setTotalInventare] = useState<number>(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [open, setOpen] = useState(false);
   const [evidenceDialogOpen, setEvidenceDialogOpen] = useState(false);
@@ -149,8 +150,10 @@ const Fonduri = () => {
         description: "Nu s-au putut încărca inventarele",
       });
       setInventare([]);
+      setTotalInventare(0);
     } else {
       setInventare(data || []);
+      setTotalInventare(data?.length || 0);
     }
     setLoadingInventare(false);
   };
@@ -341,12 +344,12 @@ const Fonduri = () => {
                     <div className="space-y-4">
                       {loadingInventare ? (
                         <p className="text-muted-foreground text-sm">Se încarcă inventarele...</p>
-                      ) : inventare.length === 0 ? (
+                      ) : totalInventare === 0 ? (
                         <p className="text-muted-foreground text-sm">Nu există inventare pentru acest fond.</p>
                       ) : (
                         <>
                           <p className="text-sm text-muted-foreground">
-                            Se vor descărca automat toate cele {inventare.length} inventare din acest fond.
+                            Se vor descărca automat toate cele {totalInventare} inventare din acest fond.
                           </p>
                           <Button 
                             onClick={handleDownloadEvidenta} 
