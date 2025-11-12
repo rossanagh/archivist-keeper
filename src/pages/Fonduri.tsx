@@ -166,13 +166,42 @@ const Fonduri = () => {
     }
 
     try {
-      // Reload inventare to ensure we have all of them
-      await loadInventareForFond(selectedFondId);
+      // Query inventare directly to ensure we have ALL of them
+      const { data: allInventare, error } = await supabase
+        .from("inventare")
+        .select(`
+          id,
+          an,
+          termen_pastrare,
+          numar_dosare,
+          compartiment_id,
+          compartimente!inner (
+            nume,
+            fond_id
+          )
+        `)
+        .eq("compartimente.fond_id", selectedFondId)
+        .order("an", { ascending: true });
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Eroare",
+          description: "Nu s-au putut încărca inventarele",
+        });
+        return;
+      }
+
+      if (!allInventare || allInventare.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Eroare",
+          description: "Nu există inventare pentru acest fond",
+        });
+        return;
+      }
       
-      // Sort all inventare by year (an) in ascending order
-      const sortedInventare = [...inventare].sort((a, b) => a.an - b.an);
-      
-      console.log(`Procesare evidență pentru ${sortedInventare.length} inventare...`);
+      console.log(`Procesare evidență pentru ${allInventare.length} inventare...`);
 
       // Import the template file
       const templateUrl = new URL('../assets/registru-evidenta-template.xlsx', import.meta.url).href;
@@ -190,7 +219,7 @@ const Fonduri = () => {
       let rowIndex = 7;
       let nrCrt = 1;
       
-      for (const inventar of sortedInventare) {
+      for (const inventar of allInventare) {
         console.log(`Procesare inventar ${nrCrt}: An ${inventar.an}, Compartiment ${inventar.compartimente.nume}`);
         
         // Load dosare for this inventar
