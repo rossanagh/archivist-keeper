@@ -980,6 +980,7 @@ const Dosare = () => {
             <div>
               <h2 className="text-3xl font-bold">Dosare</h2>
               <p className="text-muted-foreground">Inventar {inventarAn}</p>
+              <p className="text-sm text-muted-foreground">Termen păstrare: {inventarTermen === 'permanent' ? 'permanent' : `${inventarTermen} ani`}</p>
             </div>
             {isAdmin && (
               <div className="flex flex-col gap-3">

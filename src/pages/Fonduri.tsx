@@ -166,8 +166,13 @@ const Fonduri = () => {
     }
 
     try {
+      // Reload inventare to ensure we have all of them
+      await loadInventareForFond(selectedFondId);
+      
       // Sort all inventare by year (an) in ascending order
-      const sortedInventare = inventare.sort((a, b) => a.an - b.an);
+      const sortedInventare = [...inventare].sort((a, b) => a.an - b.an);
+      
+      console.log(`Procesare evidență pentru ${sortedInventare.length} inventare...`);
 
       // Import the template file
       const templateUrl = new URL('../assets/registru-evidenta-template.xlsx', import.meta.url).href;
@@ -186,11 +191,15 @@ const Fonduri = () => {
       let nrCrt = 1;
       
       for (const inventar of sortedInventare) {
+        console.log(`Procesare inventar ${nrCrt}: An ${inventar.an}, Compartiment ${inventar.compartimente.nume}`);
+        
         // Load dosare for this inventar
         const { data: dosare } = await supabase
           .from("dosare")
           .select("*")
           .eq("inventar_id", inventar.id);
+        
+        console.log(`  - Găsite ${dosare?.length || 0} dosare pentru inventar ${inventar.an}`);
         
         worksheet[`A${rowIndex}`] = { t: 'n', v: nrCrt }; // Nr. crt
         worksheet[`B${rowIndex}`] = { t: 's', v: '' }; // Data intrarii - empty
@@ -200,7 +209,7 @@ const Fonduri = () => {
         worksheet[`F${rowIndex}`] = { t: 'n', v: dosare?.length || 0 }; // Nr. Total dosare
         worksheet[`G${rowIndex}`] = { t: 'n', v: dosare?.length || 0 }; // Nr. Dosare primite efectiv
         worksheet[`H${rowIndex}`] = { t: 'n', v: 0 }; // Nr. Dosare ramase la compartim
-        worksheet[`I${rowIndex}`] = { t: 's', v: `${inventar.termen_pastrare} ani` }; // Termen de pastrare
+        worksheet[`I${rowIndex}`] = { t: 's', v: inventar.termen_pastrare === 'permanent' ? 'permanent' : `${inventar.termen_pastrare} ani` }; // Termen de pastrare
         worksheet[`J${rowIndex}`] = { t: 's', v: '' }; // Data iesirii - empty
         worksheet[`K${rowIndex}`] = { t: 's', v: '' }; // Unde s-au predat - empty
         worksheet[`L${rowIndex}`] = { t: 's', v: '' }; // Act de predare - empty
@@ -210,6 +219,8 @@ const Fonduri = () => {
         rowIndex++;
         nrCrt++;
       }
+      
+      console.log(`Total ${nrCrt - 1} rânduri procesate în evidență.`);
       
       // Generate the file
       const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
