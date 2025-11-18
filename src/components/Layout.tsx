@@ -171,7 +171,7 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="container mx-auto px-4 text-center text-xs text-muted-foreground">
           © 2025 Silurus - Made by{" "}
           <a 
-            href="https://rosswebdev.com" 
+            href="https://rossweb.ro/" 
             target="_blank" 
             rel="noopener noreferrer"
             className="hover:text-primary transition-colors underline"
