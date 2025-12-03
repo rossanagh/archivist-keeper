@@ -215,6 +215,35 @@ export type Database = {
         }
         Relationships: []
       }
+      user_fond_access: {
+        Row: {
+          created_at: string | null
+          fond_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          fond_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          fond_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_fond_access_fond_id_fkey"
+            columns: ["fond_id"]
+            isOneToOne: false
+            referencedRelation: "fonduri"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
