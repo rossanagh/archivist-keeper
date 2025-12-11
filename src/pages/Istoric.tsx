@@ -28,13 +28,13 @@ const Istoric = () => {
   }, []);
 
   const loadLogs = async () => {
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const seventyTwoHoursAgo = new Date();
+    seventyTwoHoursAgo.setHours(seventyTwoHoursAgo.getHours() - 72);
 
     const { data, error } = await supabase
       .from("audit_logs")
       .select("*")
-      .gte("created_at", threeMonthsAgo.toISOString())
+      .gte("created_at", seventyTwoHoursAgo.toISOString())
       .order("created_at", { ascending: false })
       .limit(1000);
 
@@ -140,7 +140,7 @@ const Istoric = () => {
         <div>
           <h1 className="text-3xl font-bold">Istoric Modificări</h1>
           <p className="text-muted-foreground">
-            Ultimele 3 luni de activitate admin
+            Ultimele 72 de ore de activitate admin
           </p>
         </div>
 
