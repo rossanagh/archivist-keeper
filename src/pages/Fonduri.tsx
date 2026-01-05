@@ -65,17 +65,7 @@ const Fonduri = () => {
     setLoading(false);
   };
 
-  useEffect(() => {
-    // Reload data when coming back to check for admin status changes
-    const interval = setInterval(async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await checkAdmin(user.id);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // Admin status is loaded once on mount via checkAuthAndLoadData
 
   const checkAdmin = async (userId: string) => {
     const { data } = await supabase
