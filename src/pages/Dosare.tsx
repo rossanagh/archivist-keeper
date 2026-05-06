@@ -569,28 +569,17 @@ const Dosare = () => {
       doc.save(fileName);
       
       // Log audit
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", user.id)
-          .single();
-
-        await supabase.from("audit_logs").insert({
-          user_id: user.id,
-          username: profile?.username || "unknown",
-          action: "DOWNLOAD_LABELS",
-          table_name: "dosare",
-          record_id: inventarId,
-          details: {
-            count: dosare.length,
-            inventar_an: inventarAn,
-            fond: fondNume,
-            compartiment: compartimentNume,
-          },
-        });
-      }
+      await supabase.rpc("log_user_action", {
+        _action: "DOWNLOAD_LABELS",
+        _table_name: "dosare",
+        _record_id: inventarId,
+        _details: {
+          count: dosare.length,
+          inventar_an: inventarAn,
+          fond: fondNume,
+          compartiment: compartimentNume,
+        },
+      });
       
       toast({
         title: "Etichete generate",
