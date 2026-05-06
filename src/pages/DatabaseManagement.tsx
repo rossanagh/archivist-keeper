@@ -52,11 +52,11 @@ const DatabaseManagement = () => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("username, full_access")
+      .select("username")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!profile || !profile.full_access) {
+    if (!profile || profile.username !== "ghitaoarga") {
       toast({
         variant: "destructive",
         title: "Acces interzis",
