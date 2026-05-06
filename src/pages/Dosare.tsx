@@ -340,32 +340,20 @@ const Dosare = () => {
       XLSX.writeFile(wb, `Inventar_${inventarAn}.xlsx`);
 
       // Log export event
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", user.id)
-          .single();
-
-        const nrCrtList = dosare.map(d => d.nr_crt).sort((a, b) => a - b);
-        
-        await supabase.from("audit_logs").insert({
-          user_id: user.id,
-          username: profile?.username || "unknown",
-          action: "EXPORT_EXCEL",
-          table_name: "dosare",
-          record_id: inventarId,
-          details: {
-            count: dosare.length,
-            nr_crt_range: nrCrtList.length > 0 ? `${nrCrtList[0]}-${nrCrtList[nrCrtList.length - 1]}` : "",
-            inventar_an: inventarAn,
-            fond: fondNume,
-            compartiment: compartimentNume,
-            termen_pastrare: inventarTermen,
-          },
-        });
-      }
+      const nrCrtList = dosare.map(d => d.nr_crt).sort((a, b) => a - b);
+      await supabase.rpc("log_user_action", {
+        _action: "EXPORT_EXCEL",
+        _table_name: "dosare",
+        _record_id: inventarId,
+        _details: {
+          count: dosare.length,
+          nr_crt_range: nrCrtList.length > 0 ? `${nrCrtList[0]}-${nrCrtList[nrCrtList.length - 1]}` : "",
+          inventar_an: inventarAn,
+          fond: fondNume,
+          compartiment: compartimentNume,
+          termen_pastrare: inventarTermen,
+        },
+      });
 
       toast({
         title: "Export reușit",
