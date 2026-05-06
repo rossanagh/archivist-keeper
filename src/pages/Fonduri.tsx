@@ -118,23 +118,29 @@ const Fonduri = () => {
 
   const loadInventareForFond = async (fondId: string) => {
     setLoadingInventare(true);
-    const { data, error } = await supabase
-      .from("inventare")
-      .select(`
-        id,
-        an,
-        termen_pastrare,
-        numar_dosare,
-        compartiment_id,
-        compartimente!inner (
-          nume,
-          fond_id
-        )
-      `)
-      .eq("compartimente.fond_id", fondId)
-      .order("an", { ascending: false });
+    try {
+      const allInventare = await fetchAllWithQuery<Inventar>(async (from, to) => {
+        return await supabase
+          .from("inventare")
+          .select(`
+            id,
+            an,
+            termen_pastrare,
+            numar_dosare,
+            compartiment_id,
+            compartimente!inner (
+              nume,
+              fond_id
+            )
+          `)
+          .eq("compartimente.fond_id", fondId)
+          .order("an", { ascending: false })
+          .range(from, to);
+      });
 
-    if (error) {
+      setInventare(allInventare);
+      setTotalInventare(allInventare.length);
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Eroare",
@@ -142,9 +148,6 @@ const Fonduri = () => {
       });
       setInventare([]);
       setTotalInventare(0);
-    } else {
-      setInventare(data || []);
-      setTotalInventare(data?.length || 0);
     }
     setLoadingInventare(false);
   };
