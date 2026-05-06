@@ -163,33 +163,27 @@ const Fonduri = () => {
     }
 
     try {
-      // Query inventare directly to ensure we have ALL of them
-      const { data: allInventare, error } = await supabase
-        .from("inventare")
-        .select(`
-          id,
-          an,
-          termen_pastrare,
-          numar_dosare,
-          compartiment_id,
-          compartimente!inner (
-            nume,
-            fond_id
-          )
-        `)
-        .eq("compartimente.fond_id", selectedFondId)
-        .order("an", { ascending: true });
+      // Query inventare with pagination to ensure we have ALL of them
+      const allInventare = await fetchAllWithQuery<Inventar>(async (from, to) => {
+        return await supabase
+          .from("inventare")
+          .select(`
+            id,
+            an,
+            termen_pastrare,
+            numar_dosare,
+            compartiment_id,
+            compartimente!inner (
+              nume,
+              fond_id
+            )
+          `)
+          .eq("compartimente.fond_id", selectedFondId)
+          .order("an", { ascending: true })
+          .range(from, to);
+      });
 
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Eroare",
-          description: "Nu s-au putut încărca inventarele",
-        });
-        return;
-      }
-
-      if (!allInventare || allInventare.length === 0) {
+      if (allInventare.length === 0) {
         toast({
           variant: "destructive",
           title: "Eroare",
