@@ -181,14 +181,24 @@ const Dosare = () => {
 
   const loadDosare = async () => {
     try {
-      const allDosare = await fetchAllWithQuery<Dosar>(async (from, to) => {
-        return await supabase
+      const PAGE = 1000;
+      const allDosare: Dosar[] = [];
+      let lastNrCrt = -1;
+      // Keyset pagination on nr_crt to bypass any offset/max-rows limits
+      while (true) {
+        const { data, error } = await supabase
           .from("dosare")
           .select("*")
           .eq("inventar_id", inventarId)
+          .gt("nr_crt", lastNrCrt)
           .order("nr_crt", { ascending: true })
-          .range(from, to);
-      });
+          .limit(PAGE);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allDosare.push(...(data as Dosar[]));
+        lastNrCrt = data[data.length - 1].nr_crt;
+        if (data.length < PAGE) break;
+      }
 
       setDosare(allDosare);
 
