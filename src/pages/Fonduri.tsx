@@ -213,13 +213,16 @@ const Fonduri = () => {
       for (const inventar of allInventare) {
         console.log(`Procesare inventar ${nrCrt}: An ${inventar.an}, Compartiment ${inventar.compartimente.nume}`);
         
-        // Load dosare for this inventar
-        const { data: dosare } = await supabase
-          .from("dosare")
-          .select("*")
-          .eq("inventar_id", inventar.id);
+        // Load dosare for this inventar with pagination
+        const dosare = await fetchAllWithQuery<{ id: string }>(async (from, to) => {
+          return await supabase
+            .from("dosare")
+            .select("id")
+            .eq("inventar_id", inventar.id)
+            .range(from, to);
+        });
         
-        console.log(`  - Găsite ${dosare?.length || 0} dosare pentru inventar ${inventar.an}`);
+        console.log(`  - Găsite ${dosare.length} dosare pentru inventar ${inventar.an}`);
         
         worksheet[`A${rowIndex}`] = { t: 'n', v: nrCrt }; // Nr. crt
         worksheet[`B${rowIndex}`] = { t: 's', v: '' }; // Data intrarii - empty
