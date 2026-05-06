@@ -277,6 +277,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_full_access_admin: { Args: { _user_id: string }; Returns: boolean }
+      log_user_action: {
+        Args: {
+          _action: string
+          _details?: Json
+          _record_id?: string
+          _table_name?: string
+        }
+        Returns: undefined
+      }
+      user_can_access_fond: {
+        Args: { _fond_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "user" | "admin"
