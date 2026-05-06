@@ -32,15 +32,19 @@ const Istoric = () => {
     const seventyTwoHoursAgo = new Date();
     seventyTwoHoursAgo.setHours(seventyTwoHoursAgo.getHours() - 72);
 
-    const { data, error } = await supabase
-      .from("audit_logs")
-      .select("*")
-      .gte("created_at", seventyTwoHoursAgo.toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1000);
+    try {
+      const allLogs = await fetchAllWithQuery<AuditLog>(async (from, to) => {
+        return await supabase
+          .from("audit_logs")
+          .select("*")
+          .gte("created_at", seventyTwoHoursAgo.toISOString())
+          .order("created_at", { ascending: false })
+          .range(from, to);
+      });
 
-    if (!error && data) {
-      setLogs(data);
+      setLogs(allLogs);
+    } catch (error: any) {
+      console.error("Error loading logs:", error);
     }
     setLoading(false);
   };
