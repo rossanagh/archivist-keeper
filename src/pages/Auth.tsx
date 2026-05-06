@@ -50,18 +50,13 @@ const Auth = () => {
 
       if (error) throw error;
 
-      // Log the login event
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("audit_logs").insert({
-          user_id: user.id,
-          username: username,
-          action: "LOGIN",
-          table_name: null,
-          record_id: null,
-          details: { timestamp: new Date().toISOString() }
-        });
-      }
+      // Log the login event via SECURITY DEFINER RPC
+      await supabase.rpc("log_user_action", {
+        _action: "LOGIN",
+        _table_name: null,
+        _record_id: null,
+        _details: { timestamp: new Date().toISOString() },
+      });
 
       toast({
         title: "Autentificare reușită",
