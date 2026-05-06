@@ -1215,10 +1215,18 @@ const Dosare = () => {
               </PaginationItem>
               {(() => {
                 const pages: (number | "ellipsis")[] = [];
-                if (totalPages <= 5) {
-                  for (let i = 1; i <= totalPages; i++) pages.push(i);
+                if (totalPages <= 1) {
+                  pages.push(1);
+                } else if (totalPages === 2) {
+                  pages.push(1, 2);
                 } else {
-                  pages.push(1, 2, 3, "ellipsis", totalPages);
+                  pages.push(1);
+                  if (currentPage !== 1 && currentPage !== totalPages) {
+                    pages.push("ellipsis", currentPage, "ellipsis");
+                  } else {
+                    pages.push("ellipsis");
+                  }
+                  pages.push(totalPages);
                 }
                 return pages.map((p, idx) =>
                   p === "ellipsis" ? (
