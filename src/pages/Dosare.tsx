@@ -826,34 +826,23 @@ const Dosare = () => {
         const sortedNrCrt = dosareData.map(d => d.nr_crt).sort((a, b) => a - b);
 
         // Log import event
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("username")
-            .eq("id", user.id)
-            .single();
-
-          await supabase.from("audit_logs").insert({
-            user_id: user.id,
-            username: profile?.username || "unknown",
-            action: "IMPORT_EXCEL",
-            table_name: "dosare",
-            record_id: inventarId,
-            details: {
-              count: dosareData.length,
-              skipped: skippedCount,
-              inserted: insertedCount,
-              updated: updatedCount,
-              overwrite_enabled: overwriteExisting,
-              nr_crt_range: `${sortedNrCrt[0]}-${sortedNrCrt[sortedNrCrt.length - 1]}`,
-              inventar_an: inventarAn,
-              fond: fondNume,
-              compartiment: compartimentNume,
-              termen_pastrare: inventarTermen,
-            },
-          });
-        }
+        await supabase.rpc("log_user_action", {
+          _action: "IMPORT_EXCEL",
+          _table_name: "dosare",
+          _record_id: inventarId,
+          _details: {
+            count: dosareData.length,
+            skipped: skippedCount,
+            inserted: insertedCount,
+            updated: updatedCount,
+            overwrite_enabled: overwriteExisting,
+            nr_crt_range: `${sortedNrCrt[0]}-${sortedNrCrt[sortedNrCrt.length - 1]}`,
+            inventar_an: inventarAn,
+            fond: fondNume,
+            compartiment: compartimentNume,
+            termen_pastrare: inventarTermen,
+          },
+        });
 
         let description = `Total ${dosareData.length} dosare procesate`;
         const parts = [];
