@@ -181,24 +181,14 @@ const Dosare = () => {
 
   const loadDosare = async () => {
     try {
-      const PAGE = 1000;
-      const allDosare: Dosar[] = [];
-      let lastNrCrt = -1;
-      // Keyset pagination on nr_crt to bypass any offset/max-rows limits
-      while (true) {
-        const { data, error } = await supabase
+      const allDosare = await fetchAllWithQuery<Dosar>(async (from, to) => {
+        return await supabase
           .from("dosare")
           .select("*")
           .eq("inventar_id", inventarId)
-          .gt("nr_crt", lastNrCrt)
           .order("nr_crt", { ascending: true })
-          .limit(PAGE);
-        if (error) throw error;
-        if (!data || data.length === 0) break;
-        allDosare.push(...(data as Dosar[]));
-        lastNrCrt = data[data.length - 1].nr_crt;
-        if (data.length < PAGE) break;
-      }
+          .range(from, to);
+      });
 
       setDosare(allDosare);
 
@@ -250,26 +240,15 @@ const Dosare = () => {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Get existing dosare to calculate next nr_crt (keyset pagination)
-    const existingDosare: { nr_crt: number }[] = [];
-    {
-      const PAGE = 1000;
-      let lastNrCrt = -1;
-      while (true) {
-        const { data, error } = await supabase
-          .from("dosare")
-          .select("nr_crt")
-          .eq("inventar_id", inventarId)
-          .gt("nr_crt", lastNrCrt)
-          .order("nr_crt", { ascending: true })
-          .limit(PAGE);
-        if (error) break;
-        if (!data || data.length === 0) break;
-        existingDosare.push(...data);
-        lastNrCrt = data[data.length - 1].nr_crt;
-        if (data.length < PAGE) break;
-      }
-    }
+    // Get existing dosare to calculate next nr_crt
+    const existingDosare = await fetchAllWithQuery<{ nr_crt: number }>(async (from, to) => {
+      return await supabase
+        .from("dosare")
+        .select("nr_crt")
+        .eq("inventar_id", inventarId)
+        .order("nr_crt", { ascending: true })
+        .range(from, to);
+    });
 
     // Auto-calculate next nr_crt
     const maxExisting = existingDosare.length > 0 
@@ -300,18 +279,29 @@ const Dosare = () => {
       });
     } else {
       // Log manual add event
-      await supabase.rpc("log_user_action", {
-        _action: "INSERT",
-        _table_name: "dosare",
-        _record_id: inventarId,
-        _details: {
-          nr_crt: nrCrt,
-          inventar_an: inventarAn,
-          fond: fondNume,
-          compartiment: compartimentNume,
-          termen_pastrare: inventarTermen,
-        },
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .single();
+
+        await supabase.from("audit_logs").insert({
+          user_id: user.id,
+          username: profile?.username || "unknown",
+          action: "INSERT",
+          table_name: "dosare",
+          record_id: inventarId,
+          details: {
+            nr_crt: nrCrt,
+            inventar_an: inventarAn,
+            fond: fondNume,
+            compartiment: compartimentNume,
+            termen_pastrare: inventarTermen,
+          },
+        });
+      }
 
       toast({
         title: "Succes",
@@ -361,20 +351,32 @@ const Dosare = () => {
       XLSX.writeFile(wb, `Inventar_${inventarAn}.xlsx`);
 
       // Log export event
-      const nrCrtList = dosare.map(d => d.nr_crt).sort((a, b) => a - b);
-      await supabase.rpc("log_user_action", {
-        _action: "EXPORT_EXCEL",
-        _table_name: "dosare",
-        _record_id: inventarId,
-        _details: {
-          count: dosare.length,
-          nr_crt_range: nrCrtList.length > 0 ? `${nrCrtList[0]}-${nrCrtList[nrCrtList.length - 1]}` : "",
-          inventar_an: inventarAn,
-          fond: fondNume,
-          compartiment: compartimentNume,
-          termen_pastrare: inventarTermen,
-        },
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .single();
+
+        const nrCrtList = dosare.map(d => d.nr_crt).sort((a, b) => a - b);
+        
+        await supabase.from("audit_logs").insert({
+          user_id: user.id,
+          username: profile?.username || "unknown",
+          action: "EXPORT_EXCEL",
+          table_name: "dosare",
+          record_id: inventarId,
+          details: {
+            count: dosare.length,
+            nr_crt_range: nrCrtList.length > 0 ? `${nrCrtList[0]}-${nrCrtList[nrCrtList.length - 1]}` : "",
+            inventar_an: inventarAn,
+            fond: fondNume,
+            compartiment: compartimentNume,
+            termen_pastrare: inventarTermen,
+          },
+        });
+      }
 
       toast({
         title: "Export reușit",
@@ -590,17 +592,28 @@ const Dosare = () => {
       doc.save(fileName);
       
       // Log audit
-      await supabase.rpc("log_user_action", {
-        _action: "DOWNLOAD_LABELS",
-        _table_name: "dosare",
-        _record_id: inventarId,
-        _details: {
-          count: dosare.length,
-          inventar_an: inventarAn,
-          fond: fondNume,
-          compartiment: compartimentNume,
-        },
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .single();
+
+        await supabase.from("audit_logs").insert({
+          user_id: user.id,
+          username: profile?.username || "unknown",
+          action: "DOWNLOAD_LABELS",
+          table_name: "dosare",
+          record_id: inventarId,
+          details: {
+            count: dosare.length,
+            inventar_an: inventarAn,
+            fond: fondNume,
+            compartiment: compartimentNume,
+          },
+        });
+      }
       
       toast({
         title: "Etichete generate",
@@ -780,26 +793,14 @@ const Dosare = () => {
           }
         }
 
-        // Get existing dosare to check which are updates vs inserts (keyset pagination)
-        const existingDosare: { nr_crt: number; id: string }[] = [];
-        {
-          const PAGE = 1000;
-          let lastNrCrt = -1;
-          while (true) {
-            const { data, error } = await supabase
-              .from("dosare")
-              .select("nr_crt, id")
-              .eq("inventar_id", inventarId)
-              .gt("nr_crt", lastNrCrt)
-              .order("nr_crt", { ascending: true })
-              .limit(PAGE);
-            if (error) throw error;
-            if (!data || data.length === 0) break;
-            existingDosare.push(...data);
-            lastNrCrt = data[data.length - 1].nr_crt;
-            if (data.length < PAGE) break;
-          }
-        }
+        // Get existing dosare to check which are updates vs inserts
+        const existingDosare = await fetchAllWithQuery<{ nr_crt: number; id: string }>(async (from, to) => {
+          return await supabase
+            .from("dosare")
+            .select("nr_crt, id")
+            .eq("inventar_id", inventarId)
+            .range(from, to);
+        });
 
         const existingMap = new Map(existingDosare.map(d => [d.nr_crt, d.id]));
         let insertedCount = 0;
@@ -859,23 +860,34 @@ const Dosare = () => {
         const sortedNrCrt = dosareData.map(d => d.nr_crt).sort((a, b) => a - b);
 
         // Log import event
-        await supabase.rpc("log_user_action", {
-          _action: "IMPORT_EXCEL",
-          _table_name: "dosare",
-          _record_id: inventarId,
-          _details: {
-            count: dosareData.length,
-            skipped: skippedCount,
-            inserted: insertedCount,
-            updated: updatedCount,
-            overwrite_enabled: overwriteExisting,
-            nr_crt_range: `${sortedNrCrt[0]}-${sortedNrCrt[sortedNrCrt.length - 1]}`,
-            inventar_an: inventarAn,
-            fond: fondNume,
-            compartiment: compartimentNume,
-            termen_pastrare: inventarTermen,
-          },
-        });
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("username")
+            .eq("id", user.id)
+            .single();
+
+          await supabase.from("audit_logs").insert({
+            user_id: user.id,
+            username: profile?.username || "unknown",
+            action: "IMPORT_EXCEL",
+            table_name: "dosare",
+            record_id: inventarId,
+            details: {
+              count: dosareData.length,
+              skipped: skippedCount,
+              inserted: insertedCount,
+              updated: updatedCount,
+              overwrite_enabled: overwriteExisting,
+              nr_crt_range: `${sortedNrCrt[0]}-${sortedNrCrt[sortedNrCrt.length - 1]}`,
+              inventar_an: inventarAn,
+              fond: fondNume,
+              compartiment: compartimentNume,
+              termen_pastrare: inventarTermen,
+            },
+          });
+        }
 
         let description = `Total ${dosareData.length} dosare procesate`;
         const parts = [];

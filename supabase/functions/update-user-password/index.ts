@@ -54,13 +54,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (typeof newPassword !== 'string' || newPassword.length < 6 || newPassword.length > 100) {
-      return new Response(
-        JSON.stringify({ error: 'New password must be between 6 and 100 characters' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Verify current password by attempting to sign in
     const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
       email: user.email!,
