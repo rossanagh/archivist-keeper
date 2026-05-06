@@ -241,14 +241,17 @@ const Dosare = () => {
     e.preventDefault();
     
     // Get existing dosare to calculate next nr_crt
-    const { data: existingDosare } = await supabase
-      .from("dosare")
-      .select("nr_crt")
-      .eq("inventar_id", inventarId)
-      .order("nr_crt", { ascending: true });
+    const existingDosare = await fetchAllWithQuery<{ nr_crt: number }>(async (from, to) => {
+      return await supabase
+        .from("dosare")
+        .select("nr_crt")
+        .eq("inventar_id", inventarId)
+        .order("nr_crt", { ascending: true })
+        .range(from, to);
+    });
 
     // Auto-calculate next nr_crt
-    const maxExisting = existingDosare && existingDosare.length > 0 
+    const maxExisting = existingDosare.length > 0 
       ? Math.max(...existingDosare.map(d => d.nr_crt)) 
       : 0;
     const nrCrt = maxExisting + 1;
