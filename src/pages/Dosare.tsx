@@ -250,15 +250,26 @@ const Dosare = () => {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Get existing dosare to calculate next nr_crt
-    const existingDosare = await fetchAllWithQuery<{ nr_crt: number }>(async (from, to) => {
-      return await supabase
-        .from("dosare")
-        .select("nr_crt")
-        .eq("inventar_id", inventarId)
-        .order("nr_crt", { ascending: true })
-        .range(from, to);
-    });
+    // Get existing dosare to calculate next nr_crt (keyset pagination)
+    const existingDosare: { nr_crt: number }[] = [];
+    {
+      const PAGE = 1000;
+      let lastNrCrt = -1;
+      while (true) {
+        const { data, error } = await supabase
+          .from("dosare")
+          .select("nr_crt")
+          .eq("inventar_id", inventarId)
+          .gt("nr_crt", lastNrCrt)
+          .order("nr_crt", { ascending: true })
+          .limit(PAGE);
+        if (error) break;
+        if (!data || data.length === 0) break;
+        existingDosare.push(...data);
+        lastNrCrt = data[data.length - 1].nr_crt;
+        if (data.length < PAGE) break;
+      }
+    }
 
     // Auto-calculate next nr_crt
     const maxExisting = existingDosare.length > 0 
