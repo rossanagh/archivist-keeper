@@ -181,14 +181,24 @@ const Dosare = () => {
 
   const loadDosare = async () => {
     try {
-      const allDosare = await fetchAllWithQuery<Dosar>(async (from, to) => {
-        return await supabase
+      const PAGE = 1000;
+      const allDosare: Dosar[] = [];
+      let lastNrCrt = -1;
+      // Keyset pagination on nr_crt to bypass any offset/max-rows limits
+      while (true) {
+        const { data, error } = await supabase
           .from("dosare")
           .select("*")
           .eq("inventar_id", inventarId)
+          .gt("nr_crt", lastNrCrt)
           .order("nr_crt", { ascending: true })
-          .range(from, to);
-      });
+          .limit(PAGE);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allDosare.push(...(data as Dosar[]));
+        lastNrCrt = data[data.length - 1].nr_crt;
+        if (data.length < PAGE) break;
+      }
 
       setDosare(allDosare);
 
@@ -240,15 +250,26 @@ const Dosare = () => {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Get existing dosare to calculate next nr_crt
-    const existingDosare = await fetchAllWithQuery<{ nr_crt: number }>(async (from, to) => {
-      return await supabase
-        .from("dosare")
-        .select("nr_crt")
-        .eq("inventar_id", inventarId)
-        .order("nr_crt", { ascending: true })
-        .range(from, to);
-    });
+    // Get existing dosare to calculate next nr_crt (keyset pagination)
+    const existingDosare: { nr_crt: number }[] = [];
+    {
+      const PAGE = 1000;
+      let lastNrCrt = -1;
+      while (true) {
+        const { data, error } = await supabase
+          .from("dosare")
+          .select("nr_crt")
+          .eq("inventar_id", inventarId)
+          .gt("nr_crt", lastNrCrt)
+          .order("nr_crt", { ascending: true })
+          .limit(PAGE);
+        if (error) break;
+        if (!data || data.length === 0) break;
+        existingDosare.push(...data);
+        lastNrCrt = data[data.length - 1].nr_crt;
+        if (data.length < PAGE) break;
+      }
+    }
 
     // Auto-calculate next nr_crt
     const maxExisting = existingDosare.length > 0 
@@ -759,14 +780,26 @@ const Dosare = () => {
           }
         }
 
-        // Get existing dosare to check which are updates vs inserts
-        const existingDosare = await fetchAllWithQuery<{ nr_crt: number; id: string }>(async (from, to) => {
-          return await supabase
-            .from("dosare")
-            .select("nr_crt, id")
-            .eq("inventar_id", inventarId)
-            .range(from, to);
-        });
+        // Get existing dosare to check which are updates vs inserts (keyset pagination)
+        const existingDosare: { nr_crt: number; id: string }[] = [];
+        {
+          const PAGE = 1000;
+          let lastNrCrt = -1;
+          while (true) {
+            const { data, error } = await supabase
+              .from("dosare")
+              .select("nr_crt, id")
+              .eq("inventar_id", inventarId)
+              .gt("nr_crt", lastNrCrt)
+              .order("nr_crt", { ascending: true })
+              .limit(PAGE);
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+            existingDosare.push(...data);
+            lastNrCrt = data[data.length - 1].nr_crt;
+            if (data.length < PAGE) break;
+          }
+        }
 
         const existingMap = new Map(existingDosare.map(d => [d.nr_crt, d.id]));
         let insertedCount = 0;
