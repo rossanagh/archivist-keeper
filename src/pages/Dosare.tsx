@@ -794,21 +794,15 @@ const Dosare = () => {
         }
 
         // Get existing dosare to check which are updates vs inserts
-        const { data: existingDosare, error: fetchError } = await supabase
-          .from("dosare")
-          .select("nr_crt, id")
-          .eq("inventar_id", inventarId);
+        const existingDosare = await fetchAllWithQuery<{ nr_crt: number; id: string }>(async (from, to) => {
+          return await supabase
+            .from("dosare")
+            .select("nr_crt, id")
+            .eq("inventar_id", inventarId)
+            .range(from, to);
+        });
 
-        if (fetchError) {
-          toast({
-            variant: "destructive",
-            title: "Eroare la import",
-            description: `Nu s-au putut încărca dosarele existente: ${fetchError.message}`,
-          });
-          return;
-        }
-
-        const existingMap = new Map(existingDosare?.map(d => [d.nr_crt, d.id]) || []);
+        const existingMap = new Map(existingDosare.map(d => [d.nr_crt, d.id]));
         let insertedCount = 0;
         let skippedCount = 0;
         let updatedCount = 0;
