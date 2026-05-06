@@ -1213,17 +1213,37 @@ const Dosare = () => {
                   className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
               </PaginationItem>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <PaginationItem key={page}>
-                  <PaginationLink
-                    onClick={() => setCurrentPage(page)}
-                    isActive={currentPage === page}
-                    className="cursor-pointer"
-                  >
-                    {page}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
+              {(() => {
+                const pages: (number | "ellipsis")[] = [];
+                const delta = 1; // pages around current
+                const range: number[] = [];
+                for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+                  range.push(i);
+                }
+                pages.push(1);
+                if (currentPage - delta > 2) pages.push("ellipsis");
+                pages.push(...range);
+                if (currentPage + delta < totalPages - 1) pages.push("ellipsis");
+                if (totalPages > 1) pages.push(totalPages);
+
+                return pages.map((p, idx) =>
+                  p === "ellipsis" ? (
+                    <PaginationItem key={`e-${idx}`}>
+                      <span className="flex h-9 w-9 items-center justify-center text-muted-foreground">…</span>
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={p}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(p)}
+                        isActive={currentPage === p}
+                        className="cursor-pointer"
+                      >
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                );
+              })()}
               <PaginationItem>
                 <PaginationNext
                   onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
