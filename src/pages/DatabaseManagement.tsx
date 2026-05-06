@@ -83,8 +83,20 @@ const DatabaseManagement = () => {
       const { data: inventareData } = await supabase.from("inventare").select("*").eq("compartiment_id", selectedCompartiment.id).order("created_at", { ascending: false });
       setData(inventareData || []);
     } else if (currentLevel === 'dosare' && selectedInventar) {
-      const { data: dosareData } = await supabase.from("dosare").select("*").eq("inventar_id", selectedInventar.id).order("nr_crt", { ascending: true });
-      setData(dosareData || []);
+      try {
+        const allDosare = await fetchAllWithQuery(async (from, to) => {
+          return await supabase
+            .from("dosare")
+            .select("*")
+            .eq("inventar_id", selectedInventar.id)
+            .order("nr_crt", { ascending: true })
+            .range(from, to);
+        });
+        setData(allDosare);
+      } catch (error: any) {
+        console.error("Error loading dosare:", error);
+        setData([]);
+      }
     }
   };
 
