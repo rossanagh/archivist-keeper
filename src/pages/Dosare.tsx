@@ -179,11 +179,31 @@ const Dosare = () => {
   };
 
   const loadDosare = async () => {
-    const { data, error } = await supabase
-      .from("dosare")
-      .select("*")
-      .eq("inventar_id", inventarId)
-      .order("nr_crt", { ascending: true });
+    // Supabase limits queries to 1000 rows by default. Fetch in batches to retrieve all dosare.
+    const PAGE_SIZE = 1000;
+    let allData: any[] = [];
+    let from = 0;
+    let error: any = null;
+
+    while (true) {
+      const { data: batch, error: batchError } = await supabase
+        .from("dosare")
+        .select("*")
+        .eq("inventar_id", inventarId)
+        .order("nr_crt", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (batchError) {
+        error = batchError;
+        break;
+      }
+      if (!batch || batch.length === 0) break;
+      allData = allData.concat(batch);
+      if (batch.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+
+    const data = allData;
 
     if (error) {
       toast({
