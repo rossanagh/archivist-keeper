@@ -180,30 +180,27 @@ const Dosare = () => {
   };
 
   const loadDosare = async () => {
-    const { data, error } = await supabase
-      .from("dosare")
-      .select("*")
-      .eq("inventar_id", inventarId)
-      .order("nr_crt", { ascending: true });
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: "Nu s-au putut încărca dosarele",
+    try {
+      const allDosare = await fetchAllWithQuery<Dosar>(async (from, to) => {
+        return await supabase
+          .from("dosare")
+          .select("*")
+          .eq("inventar_id", inventarId)
+          .order("nr_crt", { ascending: true })
+          .range(from, to);
       });
-    } else {
-      setDosare(data || []);
-      
+
+      setDosare(allDosare);
+
       // Calculate next nr_crt
-      const maxExisting = data && data.length > 0 
-        ? Math.max(...data.map(d => d.nr_crt)) 
+      const maxExisting = allDosare.length > 0
+        ? Math.max(...allDosare.map(d => d.nr_crt))
         : 0;
       setNextNrCrt(maxExisting + 1);
-      
+
       // Calculate date extreme range from all dosare
-      if (data && data.length > 0) {
-        const dateRanges = data.map(d => d.date_extreme).filter(d => d);
+      if (allDosare.length > 0) {
+        const dateRanges = allDosare.map(d => d.date_extreme).filter(d => d);
         if (dateRanges.length > 0) {
           // Extract all years from date ranges (handles formats like "2020-2025" or "2020")
           const allYears: number[] = [];
@@ -213,7 +210,7 @@ const Dosare = () => {
               years.forEach(y => allYears.push(parseInt(y)));
             }
           });
-          
+
           if (allYears.length > 0) {
             const minYear = Math.min(...allYears);
             const maxYear = Math.max(...allYears);
@@ -221,6 +218,12 @@ const Dosare = () => {
           }
         }
       }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Nu s-au putut încărca dosarele",
+      });
     }
   };
 
