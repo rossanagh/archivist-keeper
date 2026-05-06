@@ -30,9 +30,8 @@ const App = () => {
           .update({ locked_by: null, locked_at: null })
           .eq("locked_by", user.id);
       }
-      // IMPORTANT: do not sign out here; it breaks session persistence on refresh/navigation.
+      await supabase.auth.signOut();
     };
-
 
     window.addEventListener('beforeunload', handleBeforeUnload);
 

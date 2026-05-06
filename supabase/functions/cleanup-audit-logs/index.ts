@@ -19,49 +19,6 @@ serve(async (req) => {
       }
     );
 
-    // Verify caller is authenticated and has full_access
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    // Check for full_access admin
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('full_access')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (profileError || !profile || !profile.full_access) {
-      console.error('Full access check failed:', profileError);
-      return new Response(
-        JSON.stringify({ error: 'Forbidden: Full access admin required' }),
-        { 
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
     // Șterge audit logs mai vechi de 72 ore
     const { error } = await supabaseAdmin
       .from('audit_logs')
@@ -73,7 +30,7 @@ serve(async (req) => {
       throw error;
     }
 
-    console.log(`Audit logs cleaned up by admin ${user.id}`);
+    console.log('Successfully cleaned up audit logs older than 72 hours');
 
     return new Response(
       JSON.stringify({ success: true, message: 'Audit logs cleaned up successfully' }),
