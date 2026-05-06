@@ -22,10 +22,10 @@
       }
     ],
     "icon": "public/pwa-512x512.png",
-    "artifactName": "InventoryApp-Portable.exe"
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
   },
   "portable": {
-    "artifactName": "InventoryApp-Portable.exe"
+    "artifactName": "InventoryApp-Portable-${version}.exe"
   },
   "extraMetadata": {
     "main": "electron/main.cjs"
