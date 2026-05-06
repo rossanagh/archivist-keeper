@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllWithQuery } from "@/lib/supabase-helpers";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -117,23 +118,29 @@ const Fonduri = () => {
 
   const loadInventareForFond = async (fondId: string) => {
     setLoadingInventare(true);
-    const { data, error } = await supabase
-      .from("inventare")
-      .select(`
-        id,
-        an,
-        termen_pastrare,
-        numar_dosare,
-        compartiment_id,
-        compartimente!inner (
-          nume,
-          fond_id
-        )
-      `)
-      .eq("compartimente.fond_id", fondId)
-      .order("an", { ascending: false });
+    try {
+      const allInventare = await fetchAllWithQuery<Inventar>(async (from, to) => {
+        return await supabase
+          .from("inventare")
+          .select(`
+            id,
+            an,
+            termen_pastrare,
+            numar_dosare,
+            compartiment_id,
+            compartimente!inner (
+              nume,
+              fond_id
+            )
+          `)
+          .eq("compartimente.fond_id", fondId)
+          .order("an", { ascending: false })
+          .range(from, to);
+      });
 
-    if (error) {
+      setInventare(allInventare);
+      setTotalInventare(allInventare.length);
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Eroare",
@@ -141,9 +148,6 @@ const Fonduri = () => {
       });
       setInventare([]);
       setTotalInventare(0);
-    } else {
-      setInventare(data || []);
-      setTotalInventare(data?.length || 0);
     }
     setLoadingInventare(false);
   };
@@ -159,33 +163,27 @@ const Fonduri = () => {
     }
 
     try {
-      // Query inventare directly to ensure we have ALL of them
-      const { data: allInventare, error } = await supabase
-        .from("inventare")
-        .select(`
-          id,
-          an,
-          termen_pastrare,
-          numar_dosare,
-          compartiment_id,
-          compartimente!inner (
-            nume,
-            fond_id
-          )
-        `)
-        .eq("compartimente.fond_id", selectedFondId)
-        .order("an", { ascending: true });
+      // Query inventare with pagination to ensure we have ALL of them
+      const allInventare = await fetchAllWithQuery<Inventar>(async (from, to) => {
+        return await supabase
+          .from("inventare")
+          .select(`
+            id,
+            an,
+            termen_pastrare,
+            numar_dosare,
+            compartiment_id,
+            compartimente!inner (
+              nume,
+              fond_id
+            )
+          `)
+          .eq("compartimente.fond_id", selectedFondId)
+          .order("an", { ascending: true })
+          .range(from, to);
+      });
 
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Eroare",
-          description: "Nu s-au putut încărca inventarele",
-        });
-        return;
-      }
-
-      if (!allInventare || allInventare.length === 0) {
+      if (allInventare.length === 0) {
         toast({
           variant: "destructive",
           title: "Eroare",
@@ -215,13 +213,16 @@ const Fonduri = () => {
       for (const inventar of allInventare) {
         console.log(`Procesare inventar ${nrCrt}: An ${inventar.an}, Compartiment ${inventar.compartimente.nume}`);
         
-        // Load dosare for this inventar
-        const { data: dosare } = await supabase
-          .from("dosare")
-          .select("*")
-          .eq("inventar_id", inventar.id);
+        // Load dosare for this inventar with pagination
+        const dosare = await fetchAllWithQuery<{ id: string }>(async (from, to) => {
+          return await supabase
+            .from("dosare")
+            .select("id")
+            .eq("inventar_id", inventar.id)
+            .range(from, to);
+        });
         
-        console.log(`  - Găsite ${dosare?.length || 0} dosare pentru inventar ${inventar.an}`);
+        console.log(`  - Găsite ${dosare.length} dosare pentru inventar ${inventar.an}`);
         
         worksheet[`A${rowIndex}`] = { t: 'n', v: nrCrt }; // Nr. crt
         worksheet[`B${rowIndex}`] = { t: 's', v: '' }; // Data intrarii - empty
