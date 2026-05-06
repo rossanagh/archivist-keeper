@@ -279,29 +279,18 @@ const Dosare = () => {
       });
     } else {
       // Log manual add event
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", user.id)
-          .single();
-
-        await supabase.from("audit_logs").insert({
-          user_id: user.id,
-          username: profile?.username || "unknown",
-          action: "INSERT",
-          table_name: "dosare",
-          record_id: inventarId,
-          details: {
-            nr_crt: nrCrt,
-            inventar_an: inventarAn,
-            fond: fondNume,
-            compartiment: compartimentNume,
-            termen_pastrare: inventarTermen,
-          },
-        });
-      }
+      await supabase.rpc("log_user_action", {
+        _action: "INSERT",
+        _table_name: "dosare",
+        _record_id: inventarId,
+        _details: {
+          nr_crt: nrCrt,
+          inventar_an: inventarAn,
+          fond: fondNume,
+          compartiment: compartimentNume,
+          termen_pastrare: inventarTermen,
+        },
+      });
 
       toast({
         title: "Succes",
