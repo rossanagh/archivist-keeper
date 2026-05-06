@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllWithQuery } from "@/lib/supabase-helpers";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,19 +31,15 @@ const Istoric = () => {
     const seventyTwoHoursAgo = new Date();
     seventyTwoHoursAgo.setHours(seventyTwoHoursAgo.getHours() - 72);
 
-    try {
-      const allLogs = await fetchAllWithQuery<AuditLog>(async (from, to) => {
-        return await supabase
-          .from("audit_logs")
-          .select("*")
-          .gte("created_at", seventyTwoHoursAgo.toISOString())
-          .order("created_at", { ascending: false })
-          .range(from, to);
-      });
+    const { data, error } = await supabase
+      .from("audit_logs")
+      .select("*")
+      .gte("created_at", seventyTwoHoursAgo.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1000);
 
-      setLogs(allLogs);
-    } catch (error: any) {
-      console.error("Error loading logs:", error);
+    if (!error && data) {
+      setLogs(data);
     }
     setLoading(false);
   };

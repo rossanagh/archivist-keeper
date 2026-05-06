@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllWithQuery } from "@/lib/supabase-helpers";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,27 +179,30 @@ const Dosare = () => {
   };
 
   const loadDosare = async () => {
-    try {
-      const allDosare = await fetchAllWithQuery<Dosar>(async (from, to) => {
-        return await supabase
-          .from("dosare")
-          .select("*")
-          .eq("inventar_id", inventarId)
-          .order("nr_crt", { ascending: true })
-          .range(from, to);
+    const { data, error } = await supabase
+      .from("dosare")
+      .select("*")
+      .eq("inventar_id", inventarId)
+      .order("nr_crt", { ascending: true });
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Eroare",
+        description: "Nu s-au putut încărca dosarele",
       });
-
-      setDosare(allDosare);
-
+    } else {
+      setDosare(data || []);
+      
       // Calculate next nr_crt
-      const maxExisting = allDosare.length > 0
-        ? Math.max(...allDosare.map(d => d.nr_crt))
+      const maxExisting = data && data.length > 0 
+        ? Math.max(...data.map(d => d.nr_crt)) 
         : 0;
       setNextNrCrt(maxExisting + 1);
-
+      
       // Calculate date extreme range from all dosare
-      if (allDosare.length > 0) {
-        const dateRanges = allDosare.map(d => d.date_extreme).filter(d => d);
+      if (data && data.length > 0) {
+        const dateRanges = data.map(d => d.date_extreme).filter(d => d);
         if (dateRanges.length > 0) {
           // Extract all years from date ranges (handles formats like "2020-2025" or "2020")
           const allYears: number[] = [];
@@ -210,7 +212,7 @@ const Dosare = () => {
               years.forEach(y => allYears.push(parseInt(y)));
             }
           });
-
+          
           if (allYears.length > 0) {
             const minYear = Math.min(...allYears);
             const maxYear = Math.max(...allYears);
@@ -218,12 +220,6 @@ const Dosare = () => {
           }
         }
       }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Eroare",
-        description: "Nu s-au putut încărca dosarele",
-      });
     }
   };
 
@@ -241,17 +237,14 @@ const Dosare = () => {
     e.preventDefault();
     
     // Get existing dosare to calculate next nr_crt
-    const existingDosare = await fetchAllWithQuery<{ nr_crt: number }>(async (from, to) => {
-      return await supabase
-        .from("dosare")
-        .select("nr_crt")
-        .eq("inventar_id", inventarId)
-        .order("nr_crt", { ascending: true })
-        .range(from, to);
-    });
+    const { data: existingDosare } = await supabase
+      .from("dosare")
+      .select("nr_crt")
+      .eq("inventar_id", inventarId)
+      .order("nr_crt", { ascending: true });
 
     // Auto-calculate next nr_crt
-    const maxExisting = existingDosare.length > 0 
+    const maxExisting = existingDosare && existingDosare.length > 0 
       ? Math.max(...existingDosare.map(d => d.nr_crt)) 
       : 0;
     const nrCrt = maxExisting + 1;
@@ -794,15 +787,21 @@ const Dosare = () => {
         }
 
         // Get existing dosare to check which are updates vs inserts
-        const existingDosare = await fetchAllWithQuery<{ nr_crt: number; id: string }>(async (from, to) => {
-          return await supabase
-            .from("dosare")
-            .select("nr_crt, id")
-            .eq("inventar_id", inventarId)
-            .range(from, to);
-        });
+        const { data: existingDosare, error: fetchError } = await supabase
+          .from("dosare")
+          .select("nr_crt, id")
+          .eq("inventar_id", inventarId);
 
-        const existingMap = new Map(existingDosare.map(d => [d.nr_crt, d.id]));
+        if (fetchError) {
+          toast({
+            variant: "destructive",
+            title: "Eroare la import",
+            description: `Nu s-au putut încărca dosarele existente: ${fetchError.message}`,
+          });
+          return;
+        }
+
+        const existingMap = new Map(existingDosare?.map(d => [d.nr_crt, d.id]) || []);
         let insertedCount = 0;
         let skippedCount = 0;
         let updatedCount = 0;
