@@ -75,13 +75,11 @@ const Layout = ({ children }: LayoutProps) => {
         .eq("locked_by", user.id);
       
       // Log logout
-      await supabase.from("audit_logs").insert({
-        user_id: user.id,
-        username: username,
-        action: "LOGOUT",
-        table_name: null,
-        record_id: null,
-        details: { timestamp: new Date().toISOString() }
+      await supabase.rpc("log_user_action", {
+        _action: "LOGOUT",
+        _table_name: null,
+        _record_id: null,
+        _details: { timestamp: new Date().toISOString() },
       });
     }
     
